@@ -1,6 +1,6 @@
 # Quintal Chord Concept
 
-> *i.e.* a tool for visualising the process of musical chord construction
+> a tool for visualising the process of musical chord construction
 
 ### Abstract (WIP)
 
@@ -12,4 +12,4 @@ The Quintal Chord Concept extrapolates upon this construct to suggest that, to a
 stacked fifths can represent variations in texture in the same manner stacked octaves do,
 and thus utilising this hypothesis to provide a fresh perspective on how stacked fifths
 in chords can represent different 'levels' of the same 'color' in the same way
-octaves represent different 'levels' of the same 'note
+octaves represent different 'levels' of the same 'note'.

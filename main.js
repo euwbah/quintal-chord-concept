@@ -1,11 +1,8 @@
 // jshint esversion: 6
 
-// Script order: 3
+// Script order: last
 
 let $notes = {};
-
-// Note modelling -- so that the appropriate enharmonic is used
-let mNotes = {};
 
 let dimens = {};
 

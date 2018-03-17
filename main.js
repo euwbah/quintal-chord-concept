@@ -26,17 +26,17 @@ $(() => {
   adjustCircleContainerSize();
 
   assignDimensions();
-  positionSectors();
+  positionCircle();
 
   // Initialize circle with C as root note
-  positionCircle(new Note('c'));
+  positionCircleNotes(new Note('c'));
 
   $('.note').css({opacity: 1});
 
   // When note is clicked, make it the new root
   $('.note').click(function() {
     $note = $(this);
-    positionCircle(new Note($note.text()));
+    positionCircleNotes(new Note($note.text()));
   });
 });
 
@@ -74,15 +74,18 @@ function adjustCircleContainerSize() {
   }
 }
 
-function positionSectors() {
-  $('.sector').css({
+function positionCircle() {
+  $('#sectors').css({
     width: dimens.containerSquareEdgeLength,
-    height: dimens.containerSquareEdgeLength,
-    borderRadius: '50%'
+    height: dimens.containerSquareEdgeLength
   });
+  $('#inner-circle').css({
+    width: dimens.containerSquareEdgeLength,
+    height: dimens.containerSquareEdgeLength
+  })
 }
 
-function positionCircle(note) {
+function positionCircleNotes(note) {
   let noteNo = note.pitch;
   let circleOfFifths = createCircleOfFifths(note); // note that this array is 1-based
 

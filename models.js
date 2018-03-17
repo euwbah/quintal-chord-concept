@@ -67,7 +67,7 @@ class Note {
   // overloads:
   // (x: full note name) =>
   //    Creates the note as specified by x
-  // (x: number from 1 to 12, y: 'b' or '#') =>
+  // (x: number from 1 to 12, y: 'b','#') =>
   //    Create a note as specified by x where 1-12 maps to notes from C to B chromatically
   //    y denotes the appropriate enharmonic to use for black-keys
   // (x: number from 1 to 7 or note letter, y: accidental class from -2 to 2) =>

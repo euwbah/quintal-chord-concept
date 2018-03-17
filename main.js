@@ -4,21 +4,24 @@
 
 let $notes = {};
 
+// Note modelling -- so that the appropriate enharmonic is used
+let mNotes = {};
+
 let dimens = {};
 
 $(() => {
   $notes[1] = $notes.c = $('#note1');
-  $notes[2] = $notes.g = $('#note2');
+  $notes[2] = $notes.cs = $('#note2');
   $notes[3] = $notes.d = $('#note3');
-  $notes[4] = $notes.a = $('#note4');
+  $notes[4] = $notes.ds = $('#note4');
   $notes[5] = $notes.e = $('#note5');
-  $notes[6] = $notes.b = $('#note6');
+  $notes[6] = $notes.f = $('#note6');
   $notes[7] = $notes.fs = $('#note7');
-  $notes[8] = $notes.cs = $('#note8');
+  $notes[8] = $notes.g = $('#note8');
   $notes[9] = $notes.gs = $('#note9');
-  $notes[10] = $notes.ds = $('#note10');
+  $notes[10] = $notes.a = $('#note10');
   $notes[11] = $notes.as = $('#note11');
-  $notes[12] = $notes.f = $('#note12');
+  $notes[12] = $notes.b = $('#note12');
 
   adjustCircleContainerSize();
 
@@ -82,11 +85,17 @@ function positionSectors() {
 }
 
 function positionCircle(startingNoteNumber) {
+  let noteNo = startingNoteNumber;
   for(let i = 0; i < 12; i++) {
-    let noteNo = ring(startingNoteNumber + i);
     let $note = $notes[noteNo];
     let top = dimens.originY - dimens.radius * Math.cos(2 * i / 12.0 * Math.PI) - $note.height() / 2;
     let left = dimens.originX + dimens.radius * Math.sin(2 * i / 12.0 * Math.PI) - $note.width() / 2;
     $note.css({top, left});
+
+    noteNo = ring(noteNo + 7);
   }
+}
+
+function createCircleOfFifths(initialNote, accidentalMode) {
+
 }

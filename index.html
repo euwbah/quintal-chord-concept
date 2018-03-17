@@ -16,6 +16,10 @@
     <!--  font-family: 'Comfortaa', cursive -->
      <link href="https://fonts.googleapis.com/css?family=Comfortaa" rel="stylesheet">
 
+    <!-- conic gradients -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prefixfree/1.0.7/prefixfree.min.js"></script>
+    <script src="conic-gradient.js"></script>
+
      <link rel="stylesheet" href="./styles.css">
   </head>
   <body>
@@ -36,6 +40,9 @@
             <div data-note="10" class="note" id="note10">Eb</div>
             <div data-note="11" class="note" id="note11">Bb</div>
             <div data-note="12" class="note" id="note12">F</div>
+            <div class="sector" id="sector-roots"></div>
+            <div class="sector" id="sector-major-genders"></div>
+            <div class="sector" id="sector-minor-genders"></div>
           </div>
         </div>
       </div>
@@ -44,6 +51,7 @@
     <!-- Bootstrap and popper.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+
     <script src="./helpers.js"></script>
     <script src="./models.js"></script>
     <script src="./main.js"></script>

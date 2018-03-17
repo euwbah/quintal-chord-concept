@@ -1,3 +1,7 @@
+// jshint esversion: 6
+
+// Script order: 3
+
 let $notes = {};
 
 $(() => {
@@ -29,6 +33,9 @@ $(() => {
     positionCircle(noteNo);
   });
 
+  let n = new Note('eb');
+  puts(n.getInterval('5'));
+
 });
 
 function adjustCircleContainerSize() {
@@ -37,16 +44,6 @@ function adjustCircleContainerSize() {
     console.log('adjusted');
     $c.height($c.width());
   }
-}
-
-// Wraps the note numbers in a ring
-// such that 12 => 12, 13 => 1, 14 => 2, etc...
-function ring(noteNumber) {
-  let x = (noteNumber - 1) % 12 + 1;
-  if (x <= 0)
-    x = 12 - x;
-
-  return x;
 }
 
 function positionCircle(startingNoteNumber) {

@@ -29,17 +29,15 @@ $(() => {
   positionSectors();
 
   // Initialize circle with C as root note
-  positionCircle(1);
+  positionCircle(new Note('c'));
 
   $('.note').css({opacity: 1});
 
   // When note is clicked, make it the new root
   $('.note').click(function() {
     $note = $(this);
-    let noteNo = $note.data('note');
-    positionCircle(noteNo);
+    positionCircle(new Note($note.text()));
   });
-
 });
 
 function assignDimensions() {
@@ -84,19 +82,46 @@ function positionSectors() {
   });
 }
 
-function positionCircle(startingNoteNumber) {
-  let noteNo = startingNoteNumber;
+function positionCircle(note) {
+  let noteNo = note.pitch;
+  let circleOfFifths = createCircleOfFifths(note); // note that this array is 1-based
+
   for(let i = 0; i < 12; i++) {
     let $note = $notes[noteNo];
+
+    // Set text to the correct spelling
+    // note that the text should be set first before positioning, as the text
+    // affects $note.width() and .height()!
+    $note.text(circleOfFifths[i + 1].toString());
+
+
     let top = dimens.originY - dimens.radius * Math.cos(2 * i / 12.0 * Math.PI) - $note.height() / 2;
     let left = dimens.originX + dimens.radius * Math.sin(2 * i / 12.0 * Math.PI) - $note.width() / 2;
     $note.css({top, left});
+
 
     noteNo = ring(noteNo + 7);
   }
 }
 
 // Creates the circle of fifths by going 6 fifths above the root and 5 fifths below.
-function createCircleOfFifths(initialNote, accidentalMode) {
-  
+// Returns a 1-based index array in the order of the circle of fifths.
+// e.g. for C initial note: 1 => C, 2 => G, etc...
+function createCircleOfFifths(initialNote, accidentalMode=AccidentalMode.ALLOW_ENHARMONICS) {
+  let circleOfFifths = [];
+  let n = initialNote.toConventionalSpelling();
+  // root + 6 fifths
+  for (let i = 1; i <= 7; i++) {
+    circleOfFifths[i] = n;
+    n = n.getInterval('5', accidentalMode);
+  }
+
+  n = initialNote.toConventionalSpelling();
+  // root - 5 fifths
+  for (let i = 12; i >= 8; i--) {
+    n = n.getInterval('4', accidentalMode);
+    circleOfFifths[i] = n;
+  }
+
+  return circleOfFifths;
 }

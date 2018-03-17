@@ -80,6 +80,8 @@ class Note {
     if (typeof y === 'undefined') {
       // (x: note name)
 
+      x = x.trim();
+
       this.pitchName = x[0].toUpperCase();
       this.accidental = x.substring(1).toLowerCase();
       this.accidentalClass = toAccidentalClass(this.accidental);
@@ -88,11 +90,12 @@ class Note {
       // (x: 1-12 chromatic, y: 'b'/'#'/'auto')
 
       let pitchName, accidental, accidentalClass;
-      if (y === 'auto')
+      if (y === 'auto') {
+        console.log(x);
         ({pitchName, accidental, accidentalClass} = CONVENTIONAL_PITCH_NOTE_MAP[x]);
-      else
+      } else
         ({pitchName, accidental, accidentalClass} = PITCH_NOTE_MAP[x][y === '#' ? 0 : 1]);
-      
+
       this.pitchName = pitchName;
       this.accidental = accidental;
       this.accidentalClass = accidentalClass;
@@ -175,19 +178,30 @@ class Note {
     return PITCHNAME_PITCH_MAP[this.pitchName] + this.accidentalClass;
   }
 
-  // Standard form notes are correctly enharmonically spelt notes for
+  // Conventionally spelt notes are correctly enharmonically spelt notes for
   // the 12-tone meantone temperament, aka the notes used to name the
   // 12 major scales: C, G, D, A, E, B, F#/Gb, Db, Ab, Eb, Bb, F
   //
   // Note that for the tritone of C, both F# and Gb are proper spellings
   // as they are directly opposite C in the circle (6 fifths forward/backward)
-  get isStandardForm() {
+  get isConventionallySpelt() {
     let currNote = this.toString();
     let matches =
       ['C', 'G', 'D', 'A', 'E', 'B', 'F#',
        'Gb', 'Db', 'Ab', 'Eb', 'Bb', 'F'].filter(x => x === currNote);
 
     return matches.length !== 0;
+  }
+
+  // Creates a new Note object representing this note, but enforces
+  // conventional spelling as defined in the `isConventionallySpelt` getter property.
+  toConventionalSpelling() {
+    // Note that this if check is necessary to preserve the F#-Gb note spelling
+    // as both are legitimate meantone spellings
+    if(this.isConventionallySpelt)
+      return new Note(this.toString());
+
+    return new Note(this.pitch, 'auto');
   }
 
   toString() {

@@ -90,10 +90,9 @@ class Note {
       // (x: 1-12 chromatic, y: 'b'/'#'/'auto')
 
       let pitchName, accidental, accidentalClass;
-      if (y === 'auto') {
-        console.log(x);
+      if (y === 'auto')
         ({pitchName, accidental, accidentalClass} = CONVENTIONAL_PITCH_NOTE_MAP[x]);
-      } else
+      else
         ({pitchName, accidental, accidentalClass} = PITCH_NOTE_MAP[x][y === '#' ? 0 : 1]);
 
       this.pitchName = pitchName;
@@ -130,20 +129,16 @@ class Note {
     // e.g. the ninth of B is also a second.
     let mDegree = PITCHNAME_DEGREE_MAP[this.pitchName];
     let newDegree = ring(mDegree + iDegree - 1, 7); // note the -1 because intervals are 1-based (1 = unison)
-    puts('newDegree: ' + newDegree);
 
     // Step 2: Handle the accidentals
     // First the global tonal center accidental, which applies to everything
     let newAccidental = this.accidentalClass;
-    puts('base accidental: ' + newAccidental);
 
     // Next, apply the diatonic modal scalar accidentals
     newAccidental += PITCHNAME_SCALE_PATTERN[this.pitchName][iDegree];
-    puts('+ scale accidental: ' + newAccidental);
 
     // Finally, apply the accidentals specified in the interval
     newAccidental += toAccidentalClass(iAccidental);
-    puts('+ interval accidental: ' + newAccidental);
 
     // Step 3: Make sure the accidentals still follow constraints of the accidentalMode
     let basicPitch;

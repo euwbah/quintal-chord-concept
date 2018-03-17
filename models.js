@@ -161,8 +161,6 @@ class Note {
       }
     }
 
-    console.log(basicPitch);
-
     if (basicPitch)
       return new Note(basicPitch, newAccidental < 0 ? 'b' : '#');
     else

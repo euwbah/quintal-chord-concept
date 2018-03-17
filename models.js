@@ -175,7 +175,7 @@ class Note {
   }
 
   get pitch() {
-    return PITCHNAME_PITCH_MAP[this.pitchName] + this.accidentalClass;
+    return ring(PITCHNAME_PITCH_MAP[this.pitchName] + this.accidentalClass);
   }
 
   // Conventionally spelt notes are correctly enharmonically spelt notes for

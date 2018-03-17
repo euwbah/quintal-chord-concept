@@ -96,6 +96,7 @@ function positionCircle(startingNoteNumber) {
   }
 }
 
+// Creates the circle of fifths by going 6 fifths above the root and 5 fifths below.
 function createCircleOfFifths(initialNote, accidentalMode) {
-
+  
 }

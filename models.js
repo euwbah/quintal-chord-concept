@@ -67,9 +67,11 @@ class Note {
   // overloads:
   // (x: full note name) =>
   //    Creates the note as specified by x
-  // (x: number from 1 to 12, y: 'b','#') =>
+  // (x: number from 1 to 12, y: 'b'/'#'/'auto') =>
   //    Create a note as specified by x where 1-12 maps to notes from C to B chromatically
   //    y denotes the appropriate enharmonic to use for black-keys
+  //    if 'auto', the accidentals will follow conventional meantone spellings with C as the root,
+  //    preferring 'F#' over 'Gb'
   // (x: number from 1 to 7 or note letter, y: accidental class from -2 to 2) =>
   //    pitchName will be assigned to x, accidentalClass and accidental will be assigned to y correspondingly
 
@@ -83,10 +85,14 @@ class Note {
       this.accidentalClass = toAccidentalClass(this.accidental);
     } else if (typeof y === 'string'){
 
-      // (x: 1-12 chromatic, y: 'b'/'#')
+      // (x: 1-12 chromatic, y: 'b'/'#'/'auto')
 
       let pitchName, accidental, accidentalClass;
-      ({pitchName, accidental, accidentalClass} = PITCH_NOTE_MAP[x][y === '#' ? 0 : 1]);
+      if (y === 'auto')
+        ({pitchName, accidental, accidentalClass} = CONVENTIONAL_PITCH_NOTE_MAP[x]);
+      else
+        ({pitchName, accidental, accidentalClass} = PITCH_NOTE_MAP[x][y === '#' ? 0 : 1]);
+      
       this.pitchName = pitchName;
       this.accidental = accidental;
       this.accidentalClass = accidentalClass;
@@ -169,6 +175,21 @@ class Note {
     return PITCHNAME_PITCH_MAP[this.pitchName] + this.accidentalClass;
   }
 
+  // Standard form notes are correctly enharmonically spelt notes for
+  // the 12-tone meantone temperament, aka the notes used to name the
+  // 12 major scales: C, G, D, A, E, B, F#/Gb, Db, Ab, Eb, Bb, F
+  //
+  // Note that for the tritone of C, both F# and Gb are proper spellings
+  // as they are directly opposite C in the circle (6 fifths forward/backward)
+  get isStandardForm() {
+    let currNote = this.toString();
+    let matches =
+      ['C', 'G', 'D', 'A', 'E', 'B', 'F#',
+       'Gb', 'Db', 'Ab', 'Eb', 'Bb', 'F'].filter(x => x === currNote);
+
+    return matches.length !== 0;
+  }
+
   toString() {
     return this.pitchName + this.accidental;
   }
@@ -191,7 +212,22 @@ const PITCH_NOTE_MAP = Object.freeze({
   9: [new Note('g#'), new Note('ab')],
   10: [new Note('a'), new Note('a')],
   11: [new Note('a#'), new Note('bb')],
-  12: [new Note('b'), new Note('b')],
+  12: [new Note('b'), new Note('b')]
+});
+
+const CONVENTIONAL_PITCH_NOTE_MAP = Object.freeze({
+  1: new Note('c'),
+  2: new Note('db'),
+  3: new Note('d'),
+  4: new Note('eb'),
+  5: new Note('e'),
+  6: new Note('f'),
+  7: new Note('f#'),
+  8: new Note('g'),
+  9: new Note('ab'),
+  10: new Note('a'),
+  11: new Note('bb'),
+  12: new Note('b')
 });
 
 // Converts an accidental string to a number representing the accidental

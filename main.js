@@ -98,8 +98,8 @@ function positionCircleNotes(note) {
     $note.text(circleOfFifths[i + 1].toString());
 
 
-    let top = dimens.originY - dimens.radius * Math.cos(2 * i / 12.0 * Math.PI) - $note.height() / 2;
-    let left = dimens.originX + dimens.radius * Math.sin(2 * i / 12.0 * Math.PI) - $note.width() / 2;
+    let top = dimens.originY - dimens.radius * Math.cos(2 * i / 12.0 * Math.PI) - $note.height() / 2.0;
+    let left = dimens.originX + dimens.radius * Math.sin(2 * i / 12.0 * Math.PI) - $note.width() / 2.0;
     $note.css({top, left});
 
 

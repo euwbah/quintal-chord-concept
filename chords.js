@@ -53,7 +53,7 @@
 const CHORD_PARSER =
   /^([A-Ga-g])(b|#|)(.*?)(2|3|4|5|7|9|11|#11|13|15|#15)?((?:(?:(?:bb|b|#|x)?1*[0-9])|dim|o|O|\u{006F}|\u{00B0}|hdim|0|\u{00F8}|\u{1D1A9}|sus|aug|\+|add[b#]*1*[0-9]|no[b#]*1*[0-9]|alt)*)$/u;
 
-// Use this to parse the 'Extras' part of the chord after it has been parsed the first time.
+// Use this to parse the alterations of a chord.
 // This RegExp will only return only the first match, one at a time.
 //
 // To use it, attempt matching, then substring the part that has been matched, repeat until
@@ -86,21 +86,45 @@ const CHORD_PARSER =
 //
 //
 // 1: If present, denotes a quasi-quality. In these cases, remember to
-//    set a flag for quasi-extensions should there be no prior existing
+//    set a flag for an upcoming quasi-extension should there be no prior existing
 //    quality-extension pairs.
 //
-// 2: If present, denotes an 'add' e.g. 'add13'.
+// 2: If present, denotes the degree to 'add' e.g. 'add13'.
 //    The value of this group denotes the absolute interval to add to the chord
 //    as per the Note.getInterval method.
 //
-// 3: If present, represents 'no' degree exclusion, e.g. 'no3'.
+// 3: If present, denotes the degree to exclude from the base chord, e.g. 'no3'.
 //    The value of this group denotes the degree of the base chord to omit.
 //    Note that accidentals are not really necessary for the degree, but are
 //    still supported as per the RegExp just in case.
 //
+// 4: If present, denotes that this is a `sus` quasi-quality.
+//
+// 5: If present, denotes the degree after `sus`, if any.
+//    This one is very complicated and its value and presence could mean one of the following:
+//
+//    a. If 2 or 4, it simply represents which degree the third gets suspended to
+//
+//    b. Otherwise, if the quasi-extension rule applies, represents the
+//       the quasi-extension of a dominant, whilst still suspending the third
+//       to a fourth. (A sus always suspends to a 4th by default)
+//       The value would be one of the tertian degrees 7,9,11 or 13, although
+//       11 is a bit redundant since it is exactly the same as a sus9.
+//       e.g. Csus9 => C9sus => C9sus4.
+//
+//    c. Otherwise, treat it as a standard add-alt.
+//
+//    d. If there isn't any numerical value, i.e. just 'sus', and the
+//       quasi-extension rule applies, the default extension is "9".
+//       Csus+ => Csus9aug => C dominant-9 sus-4 alt-#5 => C F G# Bb D
+//
+//    e. If there isn't any value and the quasi-extension rule doesn't apply,
+//       it defaults to a sus4.
+//       Ct9sus => C major-9 sus-4 => C F G B D
+//
 // Test this here: https://regex101.com/r/FB5bDF/5
 const CHORD_ALTERATIONS_PARSER =
-  /^(?:(?:(?:bb|b|#|x)?1*[0-9])|(dim|o|O|\u{006F}|\u{00B0}|hdim|0|\u{00F8}|\u{1D1A9}|sus|aug|\+)|add([b#]*1*[0-9])|no([b#]*1*[0-9])|alt)/u;
+  /^(?:(?:(?:bb|b|#|x)?1*[0-9])|(dim|o|O|\u{006F}|\u{00B0}|hdim|0|\u{00F8}|\u{1D1A9}|aug|\+)|add([b#]*1*[0-9])|no([b#]*1*[0-9])|sus(2|4|7|9|11|13)|alt)/u;
 
 const Qualities = Object.freeze({
   MAJOR: 1,
@@ -108,8 +132,52 @@ const Qualities = Object.freeze({
   MINOR: 3,
 });
 
+class Degree {
+  constructor(str) {
+    this.__strValue = str;
+    let match = str.match(/(bb|b|#|x|)(\d+)/);
+    if (match === null)
+      throw str + " is not a valid degree";
+
+    [,this.accidental, this.degree] = match;
+  }
+
+  get accidental() {
+    return this.__accidental;
+  }
+  set accidental(value) {
+    this.__accidental = value;
+    this.__accidentalClass = toAccidentalClass(value);
+  }
+
+  get accidentalClass() {
+    return this.__accidentalClass;
+  }
+  set accidentalClass(value) {
+    this.__accidentalClass = value;
+    this.__accidental = toAccidental(value);
+  }
+
+  toString() {
+    return this.__strValue;
+  }
+}
+
 class Chord {
   constructor(str) {
+
+    this.root = undefined;        // Note object
+    this.quality = undefined;     // Qualities enum
+    this.extension = undefined;   // Number
+    this.alterations = undefined; // [Degree] indexed by scalic degree
+    this.addedNotes = undefined;  // [Degree] list
+    this.removedNotes = undefined;// [Degree] list
+
+    // Order of operations:
+    // Root -> Quality-extension -> Removed notes applied to unaltered chords
+    //      -> Alterations applied to remaining basic chord tones
+    //      -> Additional notes that aren't affected by any of the previous steps.
+
     let chordStr = str.replace(/\w+/, '');
     let [,root, rootAccidental, quality, extension, alterations] = chordStr.match(CHORD_PARSER);
 
@@ -130,9 +198,6 @@ class Chord {
 
     else if (!quality || quality.length === 0)
       this.quality = Qualities.DOMINANT;
-
-    else if (['s', 'su', 'sus'].includes(lcQuality))
-      this.quality = Qualities.SUSPENDED;
 
     else {
       // There chord is erroneous... time to find out what went wrong...
@@ -187,23 +252,35 @@ class Chord {
 
     // Assign Extension
 
-    let powerChord = false;
+    let no3 = false;
+    let impliedSuspension;
 
-    if (!extension || extension.length === 0)
-      this.extension = 5;
-    else
-      this.extension = Number.parseInt(extension);
-
+    // Handling some shorthands...
     if (this.quality === Qualities.DOMINANT) {
       // if the 5 extension is explicitly stated, it would mean that it is
       // a power chord, so the powerChord flag needs to be set so that
       // a `no3` can be set later
       if (extension == 5)
-        powerChord = true;
+        no3 = true;
 
-      if (extension == 2 || extension == 4)
-        this.quality = Qualities.SUSPENDED;
+      // C2 and C4, although syntactically incorrect, is shorthand for Csus2 and Csus4
+      if (extension == 2 || extension == 4) {
+        impliedSuspension = extension;
+        extension = 5;
+      }
     }
+
+    // This flag is used later to make sure quasi extensions are correctly identified
+    let noQualityExtensionPair = false;
+
+    // Implied extension is 5.
+    if (!extension || extension.length === 0) {
+      this.extension = 5;
+      if (this.quality === Qualities.DOMINANT)
+        // No extension nor quality provided
+        noQualityExtensionPair = true;
+    } else
+      this.extension = Number.parseInt(extension);
 
     // Handle Alterations
 
@@ -213,17 +290,48 @@ class Chord {
 
     let remaining = alterations;
 
+
+    let quasiExtensionFlag = false;
+
+    // only the first alteration can be granted the quasiExtensionFlag
+    let first = true;
+
+    this.alterations = [];
     // empty string will be coerced into a falsey value.
     while(remaining) {
       let match = remaining.match(CHORD_ALTERATIONS_PARSER);
       if (match === null)
         throw 'Internal error! Alteration error fell through quality parsing check :(';
 
-      let [fullMatch, addDegree, noDegree] = match;
+      let [full, quasiQuality, addDegree, noDegree, susMatch, susDegree] = match;
 
-      if (addDegree) {
+      if (quasiQuality) {
+        if (first)
+          quasiExtensionFlag = true;
+
+        if (['dim','o','\u006F','\u00B0'].includes(quasiQuality)) {
+          this.alterations[3] = new Degree('b3');
+          this.alterations[5] = new Degree('b5');
+          this.alterations[7] = new Degree('bb7');
+        } else if (['hdim', '0', '\u00F8', '\u{1D1A9}'].includes(quasiQuality)) {
+          this.alterations[3] = new Degree('b3');
+          this.alterations[5] = new Degree('b5');
+        } else if (['aug', '+'].includes(quasiQuality)) {
+          this.alterations[5] = new Degree('#5');
+        }
+      } else if (addDegree) {
+
+      } else if (noDegree) {
+
+      } else if (quasiExtensionFlag) {
+        quasiExtensionFlag = false;
+      } else if (susMatch) {
+
+      } else {
 
       }
+
+      first = false;
     }
   }
 }

@@ -95,8 +95,19 @@ class Chord {
 
     // Assign Extension
 
+    let powerChord = false;
+
     if (!extension || extension.length === 0)
       this.extension = 5;
+    else
+      this.extension = Number.parseInt(extension);
+
+    // if the 5 extension is explicitly stated, it would mean that it is
+    // a power chord, so the powerChord flag needs to be set so that
+    // a `no3` can be set later
+    if (extension == 5)
+      powerChord = true;
+
     
   }
 }

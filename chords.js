@@ -6,10 +6,11 @@
 // Capture group indexes:
 // 1: Pitch Name
 // 2: Accidental
-// 3: Chord qualities (Major, Minor, Dom, Sus)
-//    Note that if the chord qualities are a jumbled mess, it could also mean that
+// 3: Chord quality (Major, Minor, Dom)
+//    Note that if the chord quality is a jumbled mess, it could also mean that
 //    the Alterations section contains invalid chord modifiers.
-// 4: Alterations, additions, quasi-qualities
+// 4: Extension level
+// 5: Alterations, additions, quasi-qualities
 //
 // Even though many people regard dim, hdim, and aug as chord qualities,
 // further thought yields that both algorithmically and musically, these
@@ -22,29 +23,35 @@
 // aug = #5
 // alt = b5 #5 b7 b9 #9 b13
 //
-// However, it should there be a proper extension to the chord, it would still be conventional
-// to put the extension after these quasi-qualities:
-// e.g. Caug13 => C13aug => C dominant-13 #5
-//      Cdim9sus4 => C9sus4dim => C dominant-9 no-3 add-4 b3 b5 bb7
+// However, should an extension be annotated without a prior defined quality-extension pair,
+// it is conventional to see one put the extension after these quasi-qualities,
+// hence the use of the term 'quasi'.
+// For the sake of brevity they shall be referred to as "quasi-extensions".
 //
-// Note that 'sus' behaves both like an alteration as well as a quality.
-// e.g. in Cmaj7sus2/Cmaj7sus4, the quality is major-7 and the sus2/sus4 have the same effect
-// as the no3add2/no3add4 alterations.
+// e.g. Caug13 => C13aug => C dominant-13 #5 => C E G# Bb D F A
+//      Cdim9sus4 => C9dimsus4 => C dominant-9 no-3 add-4 (no-b3) b5 b-of-b7 => C F Gb Bbb D
 //
-// However, the sus in chords like Csus7, Csus9 (the default form of Csus), Csus13,
-// although effectively representing C7sus4, C9sus4, and C13sus4 respectively,
-// they behave like chord qualities because they mirror the algorithmic generation
-// of the dominant extension series, whilst keeping.
+// But for cases like the following, the degrees after quasi-qualities are NOT
+// quasi-extensions because the quality-extension pair has been already defined.
 //
-// However, it is pointlesss to differentiate the two different gramatical usages of
-// sus in terms of regex parsing. In the former example where sus behaves like an alteration,
-// the 'Quality' capture group will capture both the major-7 and the sus2/4 as if both were
-// qualities.
+//                   quality-extension pair
+//                          vvvvvvv
+//      Cmaj9hdim11b13 => C major-9 b3 b5 add-11 add/alt-b13 => C Eb Gb B F Ab
 //
+// Note in the following how either qualities or extensions of the
+// quality-extension pair can be implied...
+//
+//      Cmajaug9 => C major-5(implied) #5 add-9(not quasi-extension!) => C E G# D
+//      C9hdim#11 => C dominant(implied)-9 b3 b5 add-#11(not QE!) => C Eb Gb Bb D F#
+//
+// Hence, if the base quality isn't dominant, the alterations parser will need
+// to parse these and update the base extension accordingly. If a base quality is
+// already specified (e.g. major, minor, suspended),
+// the numbers can be treated as additions/alterations instead of extensions.
 //
 // Test this here: https://regex101.com/r/IxcDTk/5
 const CHORD_PARSER =
-  /^([A-Ga-g])(b|#|)((?:.*?(?:2|3|4|5|7|9|11|#11|13|15|#15)?)*?(?:2|3|4|5|7|9|11|#11|13|15|#15)?)((?:(?:(?:bb|b|#|x)?1*[0-9])|(?:dim|o|O|\u{006F}|\u{00B0}|hdim|0|\u{00F8}|\u{1D1A9})7*|aug|\+|add[b#]*1*[0-9]|no[b#]*1*[0-9]|alt)*)$/u;
+  /^([A-Ga-g])(b|#|)(.*?)(2|3|4|5|7|9|11|#11|13|15|#15)?((?:(?:(?:bb|b|#|x)?1*[0-9])|dim|o|O|\u{006F}|\u{00B0}|hdim|0|\u{00F8}|\u{1D1A9}|sus|aug|\+|add[b#]*1*[0-9]|no[b#]*1*[0-9]|alt)*)$/u;
 
 // Use this to parse the 'Extras' part of the chord after it has been parsed the first time.
 // This RegExp will only return only the first match, one at a time.
@@ -56,26 +63,49 @@ const CHORD_PARSER =
 // there is an error in the chord.
 //
 // Capture Group Indexes:
-// 0 (Full match): Represents almost everything except the following:
+// 0: If only group[0] exists, denotes that alteration is an addition-alteration,
+//    sometimes people put these in brackets to aid in readability, e.g. Cmaj7(#9)(13),
+//    but it isn't actually necessary grammar, logically speaking.
 //
-// 1: If present, means that the modifier is an 'add' e.g. 'add13'.
+//    Add-alts behave as either additions or alterations depending on the situation:
+//
+//    If the add-alt degree exists in the unaltered form, alter that degree
+//        Cmin13(#11) -> 11 exists in the tertian stack of 13, hence it is replaced with #11
+//                    => C Eb G Bb F# A
+//
+//    If the add-alt degree does NOT exist in the unaltered form, treat it as an `add`
+//        Cmin13(#4) -> 4 doesn't exist in the tertian stack of 13
+//                   -> C minor-13 add-#4 => C Eb F# G Bb D F A
+//
+//    If there is already an existing add-alt of the same degree, treat it as an `add`
+//        C+11(b9)(#9) -> the 9 is both # and b;
+//                           the first ninth (b9) replaces the original 9
+//                           the second ninth becomes an add-#9
+//                     -> C dominant-11 aug-#5 alt-b9 add-#9
+//                     -> C E G# Bb Db D# F
+//
+//
+// 1: If present, denotes a quasi-quality. In these cases, remember to
+//    set a flag for quasi-extensions should there be no prior existing
+//    quality-extension pairs.
+//
+// 2: If present, denotes an 'add' e.g. 'add13'.
 //    The value of this group denotes the absolute interval to add to the chord
 //    as per the Note.getInterval method.
 //
-// 2: If present, represents 'no' degree exclusion, e.g. 'no3'.
+// 3: If present, represents 'no' degree exclusion, e.g. 'no3'.
 //    The value of this group denotes the degree of the base chord to omit.
 //    Note that accidentals are not really necessary for the degree, but are
 //    still supported as per the RegExp just in case.
 //
-// Test this here: https://regex101.com/r/FB5bDF/4
+// Test this here: https://regex101.com/r/FB5bDF/5
 const CHORD_ALTERATIONS_PARSER =
-  /^(?:(?:(?:bb|b|#|x)?(?:2|3|4|5|6|7|9|11|13|15))|dim7*|[oO]7*|hdim|07*|aug|\+|add([b#]*1*[0-9])|no([b#]*1*[0-9])|alt)/;
+  /^(?:(?:(?:bb|b|#|x)?1*[0-9])|(dim|o|O|\u{006F}|\u{00B0}|hdim|0|\u{00F8}|\u{1D1A9}|sus|aug|\+)|add([b#]*1*[0-9])|no([b#]*1*[0-9])|alt)/u;
 
 const Qualities = Object.freeze({
   MAJOR: 1,
   DOMINANT: 2,
   MINOR: 3,
-  SUSPENDED: 4
 });
 
 class Chord {

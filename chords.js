@@ -102,12 +102,20 @@ class Chord {
     else
       this.extension = Number.parseInt(extension);
 
-    // if the 5 extension is explicitly stated, it would mean that it is
-    // a power chord, so the powerChord flag needs to be set so that
-    // a `no3` can be set later
-    if (extension == 5)
-      powerChord = true;
+    if (this.quality === Qualities.DOMINANT) {
+    
+      // if the 5 extension is explicitly stated, it would mean that it is
+      // a power chord, so the powerChord flag needs to be set so that
+      // a `no3` can be set later
+      if (extension == 5)
+        powerChord = true;
 
+      if (extension == 2 || extension == 4)
+        this.quality = Qualities.SUSPENDED;
+    }
+    
+    // Handle Alterations
+    
     
   }
 }

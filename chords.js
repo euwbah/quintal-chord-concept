@@ -12,7 +12,7 @@
 //    Note that if the chord quality is a jumbled mess, it probably means that
 //    the Extras section contains invalid chord modifiers.
 // 4: Chord quality extension (2,4,7,9,11,#11,13,15,#15)
-// 5: Extras (Alterations, additions, quasi-qualities like dim, hdim and aug)
+// 5: Alterations, additions, quasi-qualities like dim, hdim and aug
 //
 // Even though many people regard dim, hdim, and aug as chord qualities,
 // further thought yields that both algorithmically and musically, these
@@ -27,9 +27,9 @@
 //
 // Furthermore, all chord qualities accept extensions, which behave like 'parameters' to a function
 // of which affects the output notes in a predictable and algorithmically computable manner
-// (which is indeed the main point of the Quintal Chord Concept)
+// (which is indeed the main point of the Quintal Chord Concept),
 // whilst the above mentioned quasi-qualities do not have such behavior, and act much more like
-// 'macros'.
+// 'macros' that inline specific fixed alterations to chords.
 //
 // Test this here: https://regex101.com/r/IxcDTk/4
 const CHORD_PARSER =
@@ -57,5 +57,46 @@ const CHORD_PARSER =
 //    still supported as per the RegExp just in case.
 //
 // Test this here: https://regex101.com/r/FB5bDF/4
-const CHORD_EXTRAS_PARSER =
+const CHORD_ALTERATIONS_PARSER =
   /^(?:(?:(?:bb|b|#|x)?(?:5|6|7|9|11|13|15))|dim7*|[oO]7*|hdim|07*|aug|\+|add([b#]*1*[0-9])|no([b#]*1*[0-9])|alt)/;
+
+const Qualities = Object.freeze({
+  MAJOR: 1,
+  DOMINANT: 2,
+  MINOR: 3,
+  SUSPENDED: 4
+});
+
+class Chord {
+  constructor(str) {
+    let chordStr = str.replace(/\w+/, '');
+    let [,root, rootAccidental, quality, extension, alterations] = chordStr.match(CHORD_PARSER);
+
+    // Assign Root
+
+    this.root = new Note(root + rootAccidental);
+
+    // Parse Quality
+
+    let lcQuality = quality.toLowerCase();
+    if (['M', '\u0394'].includes(quality) ||
+        ['t', 'ma', 'maj', 'major'].includes(lcQuality))
+      this.quality = Qualities.MAJOR;
+
+    else if (['m', '-'].includes(quality) ||
+             ['mi', 'min', 'minor'].includes(lcQuality))
+      this.quality = Qualities.MINOR;
+
+    else if (!quality || quality.length === 0)
+      this.quality = Qualities.DOMINANT;
+
+    else if (['s', 'su', 'sus'].includes(lcQuality))
+      this.quality = Qualities.SUSPENDED;
+
+    // Assign Extension
+
+    if (!extension || extension.length === 0)
+      this.extension = 5;
+    
+  }
+}

@@ -179,11 +179,8 @@ class Note {
   // as they are directly opposite C in the circle (6 fifths forward/backward)
   get isConventionallySpelt() {
     let currNote = this.toString();
-    let matches =
-      ['C', 'G', 'D', 'A', 'E', 'B', 'F#',
-       'Gb', 'Db', 'Ab', 'Eb', 'Bb', 'F'].filter(x => x === currNote);
-
-    return matches.length !== 0;
+    return ['C', 'G', 'D', 'A', 'E', 'B', 'F#',
+            'Gb', 'Db', 'Ab', 'Eb', 'Bb', 'F'].includes(currNote);
   }
 
   // Creates a new Note object representing this note, but enforces

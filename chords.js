@@ -57,9 +57,14 @@ function debug(str) {
 // already specified (e.g. major, minor, suspended),
 // the numbers can be treated as additions/alterations instead of extensions.
 //
-// Test this here: https://regex101.com/r/IxcDTk/7
+// Test this here: https://regex101.com/r/IxcDTk/8
 const CHORD_PARSER =
-  /^([A-Ga-g])(b|#|)(.*?)(2|3|4|5|7|9|11|#11|13|15|#15)?((?:(?:(?:bb|b|#|x)?(?:1*[1-9]|10))|dim|o|O|\u{006F}|\u{00B0}|hdim|0|\u{00F8}|\u{1D1A9}|sus|aug|\+|add[b#]*1*[0-9]|no[b#]*1*[0-9]|alt)*)$/u;
+  /^([A-Ga-g])(b|#|)(.*?)(2|3|4|5|7|9|11|#11|13|15|#15)?((?:(?:(?:bb|b|#|x)?(?:1*[1-9]|10))|dim|o|O|\u{006F}|\u{00B0}|hdim|0|\u{00F8}|\u{1D1A9}|sus|aug|\+|add[b#]*1*[0-9]|no[b#]*1*[0-9]|alt|())*)$/u;
+
+// Same as ALTERATION_UNWANTED_CHARS except brackets are kept for parsing
+// brackets are used to identify C#11 [C# dom-11] from C(#11) [C add-#11]
+// The brackets will be removed in ALTERATION_UNWANTED_CHARS
+const CHORD_UNWANTED_CHARS = /(?:(?![-+\u{394}\u{006F}\u{00B0}\u{00F8}\u{1D1A9}#])[\s\{\}\W_])+/u;
 
 // Use this to parse the alterations of a chord.
 // This RegExp will only return only the first match, one at a time.
@@ -133,6 +138,9 @@ const CHORD_PARSER =
 // Test this here: https://regex101.com/r/FB5bDF/7
 const CHORD_ALTERATIONS_PARSER =
   /^(?:(?:(?:bb|b|#|x)?(?:1*[1-9]|10))|(dim|o|O|\u{006F}|\u{00B0}|hdim|0|\u{00F8}|\u{1D1A9}|aug|\+)|add([b#]*1*[0-9])|no([b#]*1*[0-9])|(sus(2|4|7|9|11|13)?)|alt)/u;
+
+// Like CHORD_UNWANTED_CHARS, but removes brackets as well
+const ALTERATION_UNWANTED_CHARS = /(?:(?![-+\u{394}\u{006F}\u{00B0}\u{00F8}\u{1D1A9}#])[\s()\{\}\W_])+/u;
 
 const Qualities = Object.freeze({
   MAJOR: 1,
@@ -223,11 +231,14 @@ class Chord {
     //      -> Alterations applied to remaining basic chord tones
     //      -> Additional notes that aren't affected by any of the previous steps.
 
-    // Remove all unnecessary/unwanted characters & whitespaces
-    let chordStr = str.replace(
-      /(?:(?![-+\u{394}\u{006F}\u{00B0}\u{00F8}\u{1D1A9}#])[\s()\{\}\W_])+/u,
-      '');
+    // Remove all unnecessary/unwanted characters & whitespaces except parenthesis
+    // the parens are useful for identifying C#11 from C(#11)
+    let chordStr = str.replace(CHORD_UNWANTED_CHARS, '');
     let [,root, rootAccidental, quality, extension, alterations] = chordStr.match(CHORD_PARSER);
+
+    // Remove parens once alterations has been (more) accurately seperated from
+    // the extension
+    alterations = alterations.replace(ALTERATION_UNWANTED_CHARS, '');
 
     // Assign Root
 

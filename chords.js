@@ -57,7 +57,7 @@ function debug(str) {
 // already specified (e.g. major, minor, suspended),
 // the numbers can be treated as additions/alterations instead of extensions.
 //
-// Test this here: https://regex101.com/r/IxcDTk/5
+// Test this here: https://regex101.com/r/IxcDTk/6
 const CHORD_PARSER =
   /^([A-Ga-g])(b|#|)(.*?)(2|3|4|5|7|9|11|#11|13|15|#15)?((?:(?:(?:bb|b|#|x)?1*[0-9])|dim|o|O|\u{006F}|\u{00B0}|hdim|0|\u{00F8}|\u{1D1A9}|sus|aug|\+|add[b#]*1*[0-9]|no[b#]*1*[0-9]|alt)*)$/u;
 
@@ -154,6 +154,7 @@ const SusMode = Object.freeze({
 
 class Degree {
   constructor(str) {
+    debug('new degree: ' + str);
     this.__strValue = str;
     let match = str.match(/(bb|b|#|x|)(\d+)/);
     if (match === null)
@@ -209,7 +210,7 @@ class Chord {
 
     // Remove all unnecessary/unwanted characters & whitespaces
     let chordStr = str.replace(
-      /(?:(?![-+\u{394}\u{006F}\u{00B0}\u{00F8}\u{1D1A9}])[\s()\{\}\W_])+/u,
+      /(?:(?![-+\u{394}\u{006F}\u{00B0}\u{00F8}\u{1D1A9}]#)[\s()\{\}\W_])+/u,
       '');
     let [,root, rootAccidental, quality, extension, alterations] = chordStr.match(CHORD_PARSER);
 
@@ -481,6 +482,7 @@ class Chord {
           }
         }
       } else {
+        debug('handle standard add-alt: ' + full);
         // Standard add-alt
         handleAddAlt(full);
       }

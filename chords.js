@@ -154,7 +154,6 @@ const SusMode = Object.freeze({
 
 class Degree {
   constructor(str) {
-    debug('new degree: ' + str);
     this.__strValue = str;
     let match = str.match(/(bb|b|#|x|)(\d+)/);
     if (match === null)
@@ -371,6 +370,7 @@ class Chord {
 
         if (['dim','o','\u006F','\u00B0'].includes(quasiQuality)) {
           if (this.dimMode === DimMode.NONE) {
+            debug('dim');
             this.dimMode = DimMode.FULL;
             this.alterations[3] = new Degree('b3');
             this.alterations[5] = new Degree('b5');
@@ -380,6 +380,7 @@ class Chord {
           }
         } else if (['hdim', '0', '\u00F8', '\u{1D1A9}'].includes(quasiQuality)) {
           if (this.dimMode === DimMode.NONE) {
+            debug('half-dim');
             this.dimMode = DimMode.HALF;
             this.alterations[3] = new Degree('b3');
             this.alterations[5] = new Degree('b5');
@@ -392,6 +393,7 @@ class Chord {
           }
         } else if (['aug', '+'].includes(quasiQuality)) {
           if (!this.aug) {
+            debug('aug');
             this.aug = true;
             this.alterations[5] = new Degree('#5');
           } else {
@@ -401,8 +403,10 @@ class Chord {
           throw 'Internal error! Unexpected match for quasi quality: ' + quasiQuality;
         }
       } else if (addDegree) {
+        debug('add degree: ' + addDegree);
         this.addedNotes.push(new Degree(addDegree));
       } else if (noDegree) {
+        debug('no degree: ' + noDegree);
         this.removedNotes.push(new Degree(noDegree));
       } else if (quasiExtensionFlag) {
         // Clear the flag
@@ -411,6 +415,7 @@ class Chord {
         // NOTE: things like Number.parseInt('b3') will return NaN
         // and [...].includes(NaN) will return false so it's alright.
         if ([3, 5, 7, 9, 11, 13].includes(Number.parseInt(full))) {
+          debug('quasi-extension: ' + full);
           // A quasi extension must be an element of the set of extensions a
           // dominant chord can have...
 
@@ -451,26 +456,30 @@ class Chord {
 
         if (susDegree) {
           // case A: explicit suspension degree
-          if (susDegree == 2 || susDegree == 4)
+          if (susDegree == 2 || susDegree == 4) {
+            debug('sus' + susDegree + ' literal');
             this.suspension = susDegree == 2 ? SusMode.TWO : SusMode.FOUR;
+          }
 
           // case B: quasi extension for dominant quality, implicit sus4
           else if (quasiExtensionRuleApplies &&
                    [3,5,7,9,11,13].includes(Number.parseInt(susDegree))) {
+            debug('sus4 implied, quasi-extension: ' + susDegree);
             this.suspension = SusMode.FOUR;
             this.extension = Number.parseInt(susDegree);
           }
 
           // case C: fall back to standard add-alt, implicit sus4
           else {
+            debug('sus4 implied, standard add-alt: ' + susDegree);
             this.suspension = SusMode.FOUR;
             handleAddAlt(susDegree);
           }
         } else {
           // case D: No explicit degree, but quasi-extension applies
           //         implicit sus4 and dominant-9 quasi extension
-          if (quasiExtensionRuleApplies &&
-              [3,5,7,9,11,13].includes(Number.parseInt(susDegree))) {
+          if (quasiExtensionRuleApplies) {
+            debug('sus4 implied, implied dominant-9th quasi-extension');
             this.suspension = SusMode.FOUR;
             this.extension = 9;
           }
@@ -478,6 +487,7 @@ class Chord {
           // case E: No explicit degree, no implicit quasi-extension,
           //         just sus4, raw sus4.
           else {
+            debug('sus4 implied, no add-alts');
             this.suspension = SusMode.FOUR;
           }
         }

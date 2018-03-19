@@ -210,7 +210,7 @@ class Chord {
 
     // Remove all unnecessary/unwanted characters & whitespaces
     let chordStr = str.replace(
-      /(?:(?![-+\u{394}\u{006F}\u{00B0}\u{00F8}\u{1D1A9}]#)[\s()\{\}\W_])+/u,
+      /(?:(?![-+\u{394}\u{006F}\u{00B0}\u{00F8}\u{1D1A9}#])[\s()\{\}\W_])+/u,
       '');
     let [,root, rootAccidental, quality, extension, alterations] = chordStr.match(CHORD_PARSER);
 

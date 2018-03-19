@@ -51,7 +51,7 @@
 //
 // Test this here: https://regex101.com/r/IxcDTk/5
 const CHORD_PARSER =
-  /^([A-Ga-g])(b|#|)(.*?)(2|3|4|5|7|9|11|#11|13|15|#15)?((?:(?:(?:bb|b|#|x)?1*[0-9])|dim|o|O|\u{006F}|\u{00B0}|hdim|0|\u{00F8}|\u{1D1A9}|sus|aug|\+|add[b#]*1*[0-9]|no[b#]*1*[0-9]|alt)*)$/u;
+  /^([A-Ga-g])(b|#|)(.*?)(2|3|4|5|7|9|11|#11|13|15|#15)?((?:(?:(?:bb|b|#|x)?1*[0-9])|dim|o|O|\u{006F}|\u{00B0}|hdim|0|\u{00F8}|\u{1D1A9}|sus|aug|\+|add[b#]*1*[0-9]|no[b#]*1*[0-9]|alt)*)$/   qu;
 
 // Use this to parse the alterations of a chord.
 // This RegExp will only return only the first match, one at a time.
@@ -112,7 +112,7 @@ const CHORD_PARSER =
 //       11 is a bit redundant since it is exactly the same as a sus9.
 //       e.g. Csus9 => C9sus => C9sus4.
 //
-//    c. Otherwise, treat it as a standard add-alt.
+//    c. Otherwise, treat it as a standard add-alt, and default the sus to a sus4
 //
 //    d. If there isn't any numerical value, i.e. just 'sus', and the
 //       quasi-extension rule applies, the default extension is "9".
@@ -120,7 +120,7 @@ const CHORD_PARSER =
 //
 //    e. If there isn't any value and the quasi-extension rule doesn't apply,
 //       it defaults to a sus4.
-//       Ct9sus => C major-9 sus-4 => C F G B D
+//       Cmaj9sus => C major-9 sus-4 => C F G B D
 //
 // Test this here: https://regex101.com/r/FB5bDF/5
 const CHORD_ALTERATIONS_PARSER =
@@ -132,6 +132,18 @@ const Qualities = Object.freeze({
   MINOR: 3,
 });
 
+const DimMode = Object.freeze({
+  NONE: 0,
+  HALF: 1,
+  FULL: 2
+});
+
+const SusMode = Object.freeze({
+  NONE: 0,
+  TWO: 2,
+  FOUR: 4
+});
+
 class Degree {
   constructor(str) {
     this.__strValue = str;
@@ -139,7 +151,10 @@ class Degree {
     if (match === null)
       throw str + " is not a valid degree";
 
-    [,this.accidental, this.degree] = match;
+    let [,accidentalStr, degreeStr] = match;
+
+    this.accidental = accidentalStr;
+    this.degree = Number.parseInt(degreeStr);
   }
 
   get accidental() {
@@ -166,12 +181,18 @@ class Degree {
 class Chord {
   constructor(str) {
 
-    this.root = undefined;        // Note object
-    this.quality = undefined;     // Qualities enum
-    this.extension = undefined;   // Number
-    this.alterations = undefined; // [Degree] indexed by scalic degree
-    this.addedNotes = undefined;  // [Degree] list
-    this.removedNotes = undefined;// [Degree] list
+    this.root = undefined;            // Note object
+    this.quality = undefined;         // Qualities enum
+    this.extension = undefined;       // Number
+    this.suspension = SusMode.NONE;   // SusMode enum
+    this.dimMode = DimMode.NONE;      // DimMode enum
+    this.aug = false;                 // true if has aug, false otherwise
+    this.alterations = [];            // [Degree] indexed by scalic degree
+    this.addedNotes = [];             // [Degree] list
+    this.removedNotes = [];           // [Degree] list
+
+    // true when the chord has no explicitly stated quality and degree
+    this.defaultQualityExtension = undefined;
 
     // Order of operations:
     // Root -> Quality-extension -> Removed notes applied to unaltered chords
@@ -252,20 +273,15 @@ class Chord {
 
     // Assign Extension
 
-    let no3 = false;
-    let impliedSuspension;
-
     // Handling some shorthands...
     if (this.quality === Qualities.DOMINANT) {
-      // if the 5 extension is explicitly stated, it would mean that it is
-      // a power chord, so the powerChord flag needs to be set so that
-      // a `no3` can be set later
+      // Power Chord = no3
       if (extension == 5)
-        no3 = true;
+        this.removedNotes.push(new Degree('3'));
 
       // C2 and C4, although syntactically incorrect, is shorthand for Csus2 and Csus4
       if (extension == 2 || extension == 4) {
-        impliedSuspension = extension;
+        this.suspension = extension == 2 ? SusMode.TWO : SusMode.FOUR;
         extension = 5;
       }
     }
@@ -280,9 +296,33 @@ class Chord {
         // No extension nor quality provided
         noQualityExtensionPair = true;
     } else
+      // Set explicit extension
       this.extension = Number.parseInt(extension);
 
+    // This field is more for info purposes than a flag
+    this.defaultQualityExtension = noQualityExtensionPair;
+
     // Handle Alterations
+
+    // This one comes up in a few different places, might as well
+    // abstract out the function
+    let handleAddAlt = (str) => {
+      let degree = new Degree(str);
+
+      if (degree.degree <= this.extension && degree.degree % 2 === 1) {
+        // if degree numeral is part of the tertian series as denoted by the
+        // chord's extension...
+
+        if (!this.alterations[degree.degree]) {
+          // ... and an alteration of this degree already doesn't exist,
+          // then treat it as an alteration
+          this.alterations[degree.degree] = degree;
+        } else {
+          // otherwise, treat it as an addition
+          this.addedNotes.push(degree);
+        }
+      }
+    }
 
     // The CHORD_ALTERATIONS_PARSER matches one alteration at a time
     // The match should never be null, because that means there's an
@@ -305,30 +345,127 @@ class Chord {
 
       let [full, quasiQuality, addDegree, noDegree, susMatch, susDegree] = match;
 
+      let quasiExtensionRuleApplies = first && noQualityExtensionPair;
+
       if (quasiQuality) {
-        if (first)
+        if (quasiExtensionFlag)
           quasiExtensionFlag = true;
 
         if (['dim','o','\u006F','\u00B0'].includes(quasiQuality)) {
-          this.alterations[3] = new Degree('b3');
-          this.alterations[5] = new Degree('b5');
-          this.alterations[7] = new Degree('bb7');
+          if (this.dimMode === DimMode.NONE) {
+            this.dimMode = DimMode.FULL;
+            this.alterations[3] = new Degree('b3');
+            this.alterations[5] = new Degree('b5');
+            this.alterations[7] = new Degree('bb7');
+          } else {
+            throw 'Chord can\'t have both types of diminished!';
+          }
         } else if (['hdim', '0', '\u00F8', '\u{1D1A9}'].includes(quasiQuality)) {
-          this.alterations[3] = new Degree('b3');
-          this.alterations[5] = new Degree('b5');
+          if (this.dimMode === DimMode.NONE) {
+            this.dimMode = DimMode.HALF;
+            this.alterations[3] = new Degree('b3');
+            this.alterations[5] = new Degree('b5');
+
+            // A half-dim defaults as a 7th chord if quality-extension is not already explicitly stated
+            if (noQualityExtensionPair)
+              this.extension = 7;
+          } else {
+            throw 'Chord can\'t have both types of diminished';
+          }
         } else if (['aug', '+'].includes(quasiQuality)) {
-          this.alterations[5] = new Degree('#5');
+          if (!this.aug) {
+            this.aug = true;
+            this.alterations[5] = new Degree('#5');
+          } else {
+            throw 'Chord can\'t be augmented more than once';
+          }
+        } else {
+          throw 'Internal error! Unexpected match for quasi quality: ' + quasiQuality;
         }
       } else if (addDegree) {
-
+        this.addedNotes.push(new Degree(addDegree));
       } else if (noDegree) {
-
+        this.removedNotes.push(new Degree(noDegree));
       } else if (quasiExtensionFlag) {
+        // Clear the flag
         quasiExtensionFlag = false;
+
+        // NOTE: things like Number.parseInt('b3') will return NaN
+        // and [...].includes(NaN) will return false so it's alright.
+        if ([3, 5, 7, 9, 11, 13].includes(Number.parseInt(full))) {
+          // A quasi extension must be an element of the set of extensions a
+          // dominant chord can have...
+
+          // Only in this scenario, update the extension
+          this.extension = Number.parseInt(full);
+
+          // Once a quasiExtension has been established,
+          // the chord is no longer without a quality-extension pair,
+          // since the extension has been explicitly stated via
+          // quasi-extension
+          noQualityExtensionPair = false;
+        } else {
+          // Otherwise, treat it like a standard add-alt
+          handleAddAlt(full);
+        }
       } else if (susMatch) {
+        // SUS IS A HUGE PROBLEM
 
+        //    a. If 2 or 4, it simply represents which degree the third gets suspended to
+        //
+        //    b. Otherwise, if the quasi-extension rule applies, represents the
+        //       the quasi-extension of a dominant, whilst still suspending the third
+        //       to a fourth. (A sus always suspends to a 4th by default)
+        //       The value would be one of the tertian degrees 7,9,11 or 13, although
+        //       11 is a bit redundant since it is exactly the same as a sus9.
+        //       e.g. Csus9 => C9sus => C9sus4.
+        //
+        //    c. Otherwise, treat it as a standard add-alt, and default the sus
+        //       to a sus4
+        //
+        //    d. If there isn't any numerical value, i.e. just 'sus', and the
+        //       quasi-extension rule applies, the default extension is "9".
+        //       Csus+ => Csus9aug => C dominant-9 sus-4 alt-#5 => C F G# Bb D
+        //
+        //    e. If there isn't any value and the quasi-extension rule doesn't apply,
+        //       it defaults to a sus4.
+        //       Cmaj9sus => C major-9 sus-4 => C F G B D
+
+        if (susDegree) {
+          // case A: explicit suspension degree
+          if (susDegree == 2 || susDegree == 4)
+            this.suspension = susDegree == 2 ? SusMode.TWO : SusMode.FOUR;
+
+          // case B: quasi extension for dominant quality, implicit sus4
+          else if (quasiExtensionRuleApplies &&
+                   [3,5,7,9,11,13].includes(Number.parseInt(susDegree))) {
+            this.suspension = SusMode.FOUR;
+            this.extension = Number.parseInt(susDegree);
+          }
+
+          // case C: fall back to standard add-alt, implicit sus4
+          else {
+            this.suspension = SusMode.FOUR;
+            handleAddAlt(susDegree);
+          }
+        } else {
+          // case D: No explicit degree, but quasi-extension applies
+          //         implicit sus4 and dominant-9 quasi extension
+          if (quasiExtensionRuleApplies &&
+              [3,5,7,9,11,13].includes(Number.parseInt(susDegree))) {
+            this.suspension = SusMode.FOUR;
+            this.extension = 9;
+          }
+
+          // case E: No explicit degree, no implicit quasi-extension,
+          //         just sus4, raw sus4.
+          else {
+            this.suspension = SusMode.FOUR;
+          }
+        }
       } else {
-
+        // Standard add-alt
+        handleAddAlt(full);
       }
 
       first = false;

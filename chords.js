@@ -64,7 +64,7 @@ const CHORD_PARSER =
 // Same as ALTERATION_UNWANTED_CHARS except brackets are kept for parsing
 // brackets are used to identify C#11 [C# dom-11] from C(#11) [C add-#11]
 // The brackets will be removed in ALTERATION_UNWANTED_CHARS
-const CHORD_UNWANTED_CHARS = /(?:(?![-+\u{394}\u{006F}\u{00B0}\u{00F8}\u{1D1A9}#])[\s\{\}\W_])+/u;
+const CHORD_UNWANTED_CHARS = /(?:(?![-+\u{394}\u{006F}\u{00B0}\u{00F8}\u{1D1A9}#()])[\s\{\}\W_])+/gu;
 
 // Use this to parse the alterations of a chord.
 // This RegExp will only return only the first match, one at a time.
@@ -140,7 +140,7 @@ const CHORD_ALTERATIONS_PARSER =
   /^(?:(?:(?:bb|b|#|x)?(?:10|1?[1-9]))|(dim|o|O|\u{006F}|\u{00B0}|hdim|0|\u{00F8}|\u{1D1A9}|aug|\+)|add([b#]*1*[0-9])|no([b#]*1*[0-9])|(sus(2|4|7|9|11|13)?)|alt)/u;
 
 // Like CHORD_UNWANTED_CHARS, but removes brackets as well
-const ALTERATION_UNWANTED_CHARS = /(?:(?![-+\u{394}\u{006F}\u{00B0}\u{00F8}\u{1D1A9}#])[\s()\{\}\W_])+/u;
+const ALTERATION_UNWANTED_CHARS = /(?:(?![-+\u{394}\u{006F}\u{00B0}\u{00F8}\u{1D1A9}#])[\s\{\}\W_])+/gu;
 
 const Qualities = Object.freeze({
   MAJOR: 1,

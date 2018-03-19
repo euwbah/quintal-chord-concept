@@ -2,6 +2,14 @@
 
 // script order: 3
 
+const DEBUG_CHORD = true;
+
+function debug(str) {
+  if (DEBUG_CHORD) {
+    console.log(str);
+  }
+}
+
 // Use this on the first pass to seperate parts of the chord
 // Capture group indexes:
 // 1: Pitch Name
@@ -312,18 +320,21 @@ class Chord {
     let handleAddAlt = (str) => {
       let degree = new Degree(str);
 
-      if (degree.degree <= this.extension && degree.degree % 2 === 1) {
-        // if degree numeral is part of the tertian series as denoted by the
-        // chord's extension...
+      debug('handling add-alt ' + str);
 
-        if (!this.alterations[degree.degree]) {
-          // ... and an alteration of this degree already doesn't exist,
-          // then treat it as an alteration
-          this.alterations[degree.degree] = degree;
-        } else {
-          // otherwise, treat it as an addition
-          this.addedNotes.push(degree);
-        }
+      // if degree numeral is part of the tertian series as denoted by the
+      // chord's extension...
+      if (degree.degree <= this.extension && degree.degree % 2 === 1 &&
+
+        // ... and an alteration of this degree already doesn't exist,..
+          !this.alterations[degree.degree]) {
+
+        // then treat it as an alteration
+        this.alterations[degree.degree] = degree;
+
+      } else {
+        // otherwise, treat it as an addition
+        this.addedNotes.push(degree);
       }
     }
 
@@ -347,6 +358,9 @@ class Chord {
         throw 'Internal error! Alteration error fell through quality parsing check :(';
 
       let [full, quasiQuality, addDegree, noDegree, susMatch, susDegree] = match;
+
+      // pop out matched chars from the remaining string
+      remaining = remaining.substring(full.length);
 
       let quasiExtensionRuleApplies = first && noQualityExtensionPair;
 

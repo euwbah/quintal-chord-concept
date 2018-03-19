@@ -57,9 +57,9 @@ function debug(str) {
 // already specified (e.g. major, minor, suspended),
 // the numbers can be treated as additions/alterations instead of extensions.
 //
-// Test this here: https://regex101.com/r/IxcDTk/8
+// Test this here: https://regex101.com/r/IxcDTk/9
 const CHORD_PARSER =
-  /^([A-Ga-g])(b|#|)(.*?)(2|3|4|5|7|9|11|#11|13|15|#15)?((?:(?:(?:bb|b|#|x)?(?:1*[1-9]|10))|dim|o|O|\u{006F}|\u{00B0}|hdim|0|\u{00F8}|\u{1D1A9}|sus|aug|\+|add[b#]*1*[0-9]|no[b#]*1*[0-9]|alt|())*)$/u;
+  /^([A-Ga-g])(b|#|)(.*?)(2|3|4|5|7|9|11|#11|13|15|#15)?((?:(?:(?:bb|b|#|x)?(?:10|1?[1-9]))|dim|o|O|\u{006F}|\u{00B0}|hdim|0|\u{00F8}|\u{1D1A9}|sus|aug|\+|add[b#]*1*[0-9]|no[b#]*1*[0-9]|alt|[()])*)$/u;
 
 // Same as ALTERATION_UNWANTED_CHARS except brackets are kept for parsing
 // brackets are used to identify C#11 [C# dom-11] from C(#11) [C add-#11]
@@ -135,9 +135,9 @@ const CHORD_UNWANTED_CHARS = /(?:(?![-+\u{394}\u{006F}\u{00B0}\u{00F8}\u{1D1A9}#
 //       it defaults to a sus4.
 //       Cmaj9sus => C major-9 sus-4 => C F G B D
 //
-// Test this here: https://regex101.com/r/FB5bDF/7
+// Test this here: https://regex101.com/r/FB5bDF/9
 const CHORD_ALTERATIONS_PARSER =
-  /^(?:(?:(?:bb|b|#|x)?(?:1*[1-9]|10))|(dim|o|O|\u{006F}|\u{00B0}|hdim|0|\u{00F8}|\u{1D1A9}|aug|\+)|add([b#]*1*[0-9])|no([b#]*1*[0-9])|(sus(2|4|7|9|11|13)?)|alt)/u;
+  /^(?:(?:(?:bb|b|#|x)?(?:10|1?[1-9]))|(dim|o|O|\u{006F}|\u{00B0}|hdim|0|\u{00F8}|\u{1D1A9}|aug|\+)|add([b#]*1*[0-9])|no([b#]*1*[0-9])|(sus(2|4|7|9|11|13)?)|alt)/u;
 
 // Like CHORD_UNWANTED_CHARS, but removes brackets as well
 const ALTERATION_UNWANTED_CHARS = /(?:(?![-+\u{394}\u{006F}\u{00B0}\u{00F8}\u{1D1A9}#])[\s()\{\}\W_])+/u;

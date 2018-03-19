@@ -341,7 +341,7 @@ class Chord {
       // Set explicit extension
       let numeralExtension = extension;
 
-      if (extension.contains('#')) {
+      if (extension.includes('#')) {
         // The explicit lydianity of the extension can be
         // ignored, although not consistent with conventional
         // chord theory, it is the fundamental precept of

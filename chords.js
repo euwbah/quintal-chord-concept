@@ -57,9 +57,9 @@ function debug(str) {
 // already specified (e.g. major, minor, suspended),
 // the numbers can be treated as additions/alterations instead of extensions.
 //
-// Test this here: https://regex101.com/r/IxcDTk/6
+// Test this here: https://regex101.com/r/IxcDTk/7
 const CHORD_PARSER =
-  /^([A-Ga-g])(b|#|)(.*?)(2|3|4|5|7|9|11|#11|13|15|#15)?((?:(?:(?:bb|b|#|x)?1*[0-9])|dim|o|O|\u{006F}|\u{00B0}|hdim|0|\u{00F8}|\u{1D1A9}|sus|aug|\+|add[b#]*1*[0-9]|no[b#]*1*[0-9]|alt)*)$/u;
+  /^([A-Ga-g])(b|#|)(.*?)(2|3|4|5|7|9|11|#11|13|15|#15)?((?:(?:(?:bb|b|#|x)?(?:1*[1-9]|10))|dim|o|O|\u{006F}|\u{00B0}|hdim|0|\u{00F8}|\u{1D1A9}|sus|aug|\+|add[b#]*1*[0-9]|no[b#]*1*[0-9]|alt)*)$/u;
 
 // Use this to parse the alterations of a chord.
 // This RegExp will only return only the first match, one at a time.

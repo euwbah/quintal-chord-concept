@@ -124,7 +124,7 @@ const CHORD_PARSER =
 //
 // Test this here: https://regex101.com/r/FB5bDF/5
 const CHORD_ALTERATIONS_PARSER =
-  /^(?:(?:(?:bb|b|#|x)?1*[0-9])|(dim|o|O|\u{006F}|\u{00B0}|hdim|0|\u{00F8}|\u{1D1A9}|aug|\+)|add([b#]*1*[0-9])|no([b#]*1*[0-9])|sus(2|4|7|9|11|13)|alt)/u;
+  /^(?:(?:(?:bb|b|#|x)?1*[0-9])|(dim|o|O|\u{006F}|\u{00B0}|hdim|0|\u{00F8}|\u{1D1A9}|aug|\+)|add([b#]*1*[0-9])|no([b#]*1*[0-9])|(sus(2|4|7|9|11|13)?)|alt)/u;
 
 const Qualities = Object.freeze({
   MAJOR: 1,
@@ -199,7 +199,10 @@ class Chord {
     //      -> Alterations applied to remaining basic chord tones
     //      -> Additional notes that aren't affected by any of the previous steps.
 
-    let chordStr = str.replace(/\s+/, '');
+    // Remove all unnecessary/unwanted characters & whitespaces
+    let chordStr = str.replace(
+      /(?:(?![-+\u{394}\u{006F}\u{00B0}\u{00F8}\u{1D1A9}])[\s()\{\}\W_])+/u,
+      '');
     let [,root, rootAccidental, quality, extension, alterations] = chordStr.match(CHORD_PARSER);
 
     // Assign Root

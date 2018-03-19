@@ -199,7 +199,7 @@ class Chord {
     //      -> Alterations applied to remaining basic chord tones
     //      -> Additional notes that aren't affected by any of the previous steps.
 
-    let chordStr = str.replace(/\w+/, '');
+    let chordStr = str.replace(/\s+/, '');
     let [,root, rootAccidental, quality, extension, alterations] = chordStr.match(CHORD_PARSER);
 
     // Assign Root

@@ -130,9 +130,9 @@ const CHORD_PARSER =
 //       it defaults to a sus4.
 //       Cmaj9sus => C major-9 sus-4 => C F G B D
 //
-// Test this here: https://regex101.com/r/FB5bDF/5
+// Test this here: https://regex101.com/r/FB5bDF/7
 const CHORD_ALTERATIONS_PARSER =
-  /^(?:(?:(?:bb|b|#|x)?1*[0-9])|(dim|o|O|\u{006F}|\u{00B0}|hdim|0|\u{00F8}|\u{1D1A9}|aug|\+)|add([b#]*1*[0-9])|no([b#]*1*[0-9])|(sus(2|4|7|9|11|13)?)|alt)/u;
+  /^(?:(?:(?:bb|b|#|x)?(?:1*[1-9]|10))|(dim|o|O|\u{006F}|\u{00B0}|hdim|0|\u{00F8}|\u{1D1A9}|aug|\+)|add([b#]*1*[0-9])|no([b#]*1*[0-9])|(sus(2|4|7|9|11|13)?)|alt)/u;
 
 const Qualities = Object.freeze({
   MAJOR: 1,

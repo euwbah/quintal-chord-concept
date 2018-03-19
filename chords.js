@@ -152,6 +152,18 @@ const SusMode = Object.freeze({
   FOUR: 4
 });
 
+// Used inside Degree object to denote where did the degree come from
+const DegreeSource = Object.freeze({
+  UNSPECIFIED: 0, // For behind-the-scenes usage, the rest are for display purposes
+  QUALITY: 1,     // Unaltered chord tone
+  NO: 2,          // Removed chord tone
+  ALTERATION: 3,  // Altered chord tone
+  ADDITION: 4,    // Added degree (regardless of chord tone)
+  SUSPENSION: 5   // Represents either the 2nd or 4th degree - the suspended 3rd
+});
+
+// For both internal transient usage and display purposes
+// Degree source need not be specified for internal usage.
 class Degree {
   constructor(str) {
     this.__strValue = str;
@@ -163,6 +175,8 @@ class Degree {
 
     this.accidental = accidentalStr;
     this.degree = Number.parseInt(degreeStr);
+    this.optional = false;
+    this.source = DegreeSource.UNSPECIFIED;
   }
 
   get accidental() {
@@ -189,15 +203,17 @@ class Degree {
 class Chord {
   constructor(str) {
 
-    this.root = undefined;            // Note object
-    this.quality = undefined;         // Qualities enum
-    this.extension = undefined;       // Number
-    this.suspension = SusMode.NONE;   // SusMode enum
-    this.dimMode = DimMode.NONE;      // DimMode enum
-    this.aug = false;                 // true if has aug, false otherwise
-    this.alterations = [];            // [Degree] indexed by scalic degree
-    this.addedNotes = [];             // [Degree] list
-    this.removedNotes = [];           // [Degree] list
+    this.root = undefined;              // Note object
+    this.quality = undefined;           // Qualities enum
+    this.extension = undefined;         // Number
+    this.explicitLydianTertian = false; // True if #11 or #15 was the explicit extension
+                                        // of a major chord
+    this.suspension = SusMode.NONE;     // SusMode enum
+    this.dimMode = DimMode.NONE;        // DimMode enum
+    this.aug = false;                   // true if has aug, false otherwise
+    this.alterations = [];              // [[Degree]] list of degrees indexed by scalic degree
+    this.addedNotes = [];               // [Degree] list
+    this.removedNotes = [];             // [Degree] list
 
     // true when the chord has no explicitly stated quality and degree
     this.defaultQualityExtension = undefined;
@@ -284,6 +300,21 @@ class Chord {
 
     // Assign Extension
 
+    // Fixing RegExp ambiguity of lydian tertian extension parsing
+    // #11 and #15 should only be extensions if the quality was
+    // explicitly denoted as major, and treated as add-alts otherwise,
+    // but the RegExp will parse any #11 or #15 numerals after
+    // the quality as extensions no matter what...
+
+    if (this.quality !== Qualities.MAJOR) {
+      if (['#11', '#15'].includes(extension)) {
+        // prepend alterations with the impostor extensions
+        alterations = extension + alterations;
+        // revert extension to nothing
+        extension = '';
+      }
+    }
+
     // Handling some shorthands...
     if (this.quality === Qualities.DOMINANT) {
       // Power Chord = no3
@@ -306,9 +337,21 @@ class Chord {
       if (this.quality === Qualities.DOMINANT)
         // No extension nor quality provided
         noQualityExtensionPair = true;
-    } else
+    } else {
       // Set explicit extension
-      this.extension = Number.parseInt(extension);
+      let numeralExtension = extension;
+
+      if (extension.contains('#')) {
+        // The explicit lydianity of the extension can be
+        // ignored, although not consistent with conventional
+        // chord theory, it is the fundamental precept of
+        // the quintal-lydian chord concept
+        numeralExtension = extension.substring(1);
+        this.explicitLydianTertian = true;
+      }
+
+      this.extension = Number.parseInt(numeralExtension);
+    }
 
     // This field is more for info purposes than a flag
     this.defaultQualityExtension = noQualityExtensionPair;
@@ -330,11 +373,35 @@ class Chord {
           !this.alterations[degree.degree]) {
 
         // then treat it as an alteration
-        this.alterations[degree.degree] = degree;
+        this.alterations[degree.degree] = [degree];
 
       } else {
         // otherwise, treat it as an addition
         this.addedNotes.push(degree);
+      }
+    }
+
+    // Even though `pure-alts` as used by quasi-qualities only alter notes,
+    // and not add them if not already part of the tertiary series,
+    //    ( e.g. bb7 in `dim` will not force upon an add-bb7 if there is )
+    //    (      no 7th originally, but will only alter the 7th there    )
+    //    (      happened to be one in the base chord.                   )
+    // two conflicting pure-alts (such as the b5 and #5 in Chdimaug)
+    // will result in a multi-alt, in which both, or even three, alterations
+    // will simultaneously sound if and only if the degree of the alteration
+    // is encapsulated within the tertian series of the extension.
+    let handleAlt = (...alts) => {
+      for (let alt in alts) {
+        debug('Handling alt: ' + alt);
+        let degree = new Degree(alt);
+
+        if (!this.alterations[degree.degree]) {
+          // No conflicting alterations - create the alteration
+          this.alterations[degree.degree] = [degree];
+        } else {
+          // Alteration with same degree already exists - add more alterations
+          this.alterations[degree.degree].push(degree);
+        }
       }
     }
 
@@ -350,7 +417,6 @@ class Chord {
     // only the first alteration can be granted the quasiExtensionFlag
     let first = true;
 
-    this.alterations = [];
     // empty string will be coerced into a falsey value.
     while(remaining) {
       let match = remaining.match(CHORD_ALTERATIONS_PARSER);
@@ -372,9 +438,7 @@ class Chord {
           if (this.dimMode === DimMode.NONE) {
             debug('dim');
             this.dimMode = DimMode.FULL;
-            this.alterations[3] = new Degree('b3');
-            this.alterations[5] = new Degree('b5');
-            this.alterations[7] = new Degree('bb7');
+            handleAlt('b3', 'b5', 'bb7');
           } else {
             throw 'Chord can\'t have both types of diminished!';
           }
@@ -382,8 +446,7 @@ class Chord {
           if (this.dimMode === DimMode.NONE) {
             debug('half-dim');
             this.dimMode = DimMode.HALF;
-            this.alterations[3] = new Degree('b3');
-            this.alterations[5] = new Degree('b5');
+            handleAlt('b3', 'b5');
 
             // A half-dim defaults as a 7th chord if quality-extension is not already explicitly stated
             if (noQualityExtensionPair)
@@ -395,7 +458,7 @@ class Chord {
           if (!this.aug) {
             debug('aug');
             this.aug = true;
-            this.alterations[5] = new Degree('#5');
+            handleAlt('#5');
           } else {
             throw 'Chord can\'t be augmented more than once';
           }

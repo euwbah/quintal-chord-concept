@@ -10,6 +10,16 @@ function debug(str) {
   }
 }
 
+// Representing the various triangle symbols out there
+// U+2206 happens to be on the Gboard on androids and U+0394 is in the greek alphabet
+const MAJ_CHARS = ['M', '\u{25B3}', '\u{2206}', '\u{0394}', '\u{25B5}', '\u{141E}'];
+
+// Representing various the circular symbols
+// U+00B0 is the 'degree' sign on the Gboard
+const DIM_CHARS = ['o', 'O', '\u{1D698}', '\u{25CB}', '\u{1D3C}', '\u{25E6}', '\u{00B0}']
+
+const HALF_DIM_CHARS = ['0', '\u{00D8}', '\u{00F8}', '\u{2205}', '\u{2300}', '\u{1D1A9}']
+
 // Use this on the first pass to seperate parts of the chord
 // Capture group indexes:
 // 1: Pitch Name
@@ -57,9 +67,9 @@ function debug(str) {
 // already specified (e.g. major, minor, suspended),
 // the numbers can be treated as additions/alterations instead of extensions.
 //
-// Test this here: https://regex101.com/r/IxcDTk/9
+// Test this here: https://regex101.com/r/IxcDTk/12
 const CHORD_PARSER =
-  /^([A-Ga-g])(b|#|)(.*?)(2|3|4|5|7|9|11|#11|13|15|#15)?((?:(?:(?:bb|b|#|x)?(?:10|1?[1-9]))|dim|o|O|\u{006F}|\u{00B0}|hdim|0|\u{00F8}|\u{1D1A9}|sus|aug|\+|add[b#]*1*[0-9]|no[b#]*1*[0-9]|alt|[()])*)$/u;
+  /^([A-Ga-g])(b|#|)(.*?)(2|3|4|5|7|9|11|#11|13|15|#15)?((?:(?:(?:bb|b|#|x)?(?:10|1?[1-9]))|[Dd][Ii][Mm]|o|O|\u{1D698}|\u{25CB}|\u{1D3C}|\u{25E6}|\u{00B0}|[Hh][Dd][Ii][Mm]|0|\u{00D8}|\u{00F8}|\u{2205}|\u{2300}|\u{1D1A9}|[Ss][Uu][Ss]|[Aa][Uu][Gg]|\+|[Aa][Dd][Dd][b#]*1*[0-9]|[Nn][Oo][b#]*1*[0-9]|[Aa][Ll][Tt]|[()])*)$/u;
 
 // Same as ALTERATION_UNWANTED_CHARS except brackets are kept for parsing
 // brackets are used to identify C#11 [C# dom-11] from C(#11) [C add-#11]
@@ -135,9 +145,9 @@ const CHORD_UNWANTED_CHARS = /(?:(?![-+\u{394}\u{006F}\u{00B0}\u{00F8}\u{1D1A9}#
 //       it defaults to a sus4.
 //       Cmaj9sus => C major-9 sus-4 => C F G B D
 //
-// Test this here: https://regex101.com/r/FB5bDF/9
+// Test this here: https://regex101.com/r/FB5bDF/13
 const CHORD_ALTERATIONS_PARSER =
-  /^(?:(?:(?:bb|b|#|x)?(?:10|1?[1-9]))|(dim|o|O|\u{006F}|\u{00B0}|hdim|0|\u{00F8}|\u{1D1A9}|aug|\+)|add([b#]*1*[0-9])|no([b#]*1*[0-9])|(sus(2|4|7|9|11|13)?)|alt)/u;
+  /^(?:(?:(?:bb|b|#|x)?(?:10|1?[1-9]))|([Dd][Ii][Mm]|o|O|\u{1D698}|\u{25CB}|\u{1D3C}|\u{25E6}|\u{00B0}|[Hh][Dd][Ii][Mm]|0|\u{00D8}|\u{00F8}|\u{2205}|\u{2300}|\u{1D1A9}|[Aa][Uu][Gg]|\+)|[Aa][Dd][Dd]([b#]*1*[0-9])|[Nn][Oo]([b#]*1*[0-9])|([Ss][Uu][Ss](2|4|7|9|11|13)?)|alt)/u;
 
 // Like CHORD_UNWANTED_CHARS, but removes brackets as well
 const ALTERATION_UNWANTED_CHARS = /(?:(?![-+\u{394}\u{006F}\u{00B0}\u{00F8}\u{1D1A9}#])[\s\{\}\W_])+/gu;
@@ -252,7 +262,7 @@ class Chord {
     // Parse Quality
 
     let lcQuality = quality.toLowerCase();
-    if (['M', '\u0394'].includes(quality) ||
+    if (MAJ_CHARS.includes(quality) ||
         ['t', 'ma', 'maj', 'major'].includes(lcQuality))
       this.quality = Qualities.MAJOR;
 
@@ -448,7 +458,7 @@ class Chord {
       if (match === null)
         throw 'Internal error! Alteration error fell through quality parsing check :(';
 
-      let [full, quasiQuality, addDegree, noDegree, susMatch, susDegree] = match;
+      let [full, quasiQuality, addDegree, noDegree, susMatch, susDegree] = match.map(x => x.toLowerCase());
 
       // pop out matched chars from the remaining string
       remaining = remaining.substring(full.length);
@@ -459,7 +469,7 @@ class Chord {
         if (quasiExtensionFlag)
           quasiExtensionFlag = true;
 
-        if (['dim','o','\u006F','\u00B0'].includes(quasiQuality)) {
+        if (quasiQuality === 'dim' || DIM_CHARS.includes(quasiQuality)) {
           if (this.dimMode === DimMode.NONE) {
             debug('dim');
             this.dimMode = DimMode.FULL;
@@ -467,7 +477,7 @@ class Chord {
           } else {
             throw 'Chord can\'t have both types of diminished!';
           }
-        } else if (['hdim', '0', '\u00F8', '\u{1D1A9}'].includes(quasiQuality)) {
+        } else if (quasiQuality === 'hdim' || HALF_DIM_CHARS.includes(quasiQuality)) {
           if (this.dimMode === DimMode.NONE) {
             debug('half-dim');
             this.dimMode = DimMode.HALF;
@@ -529,14 +539,14 @@ class Chord {
         //       to a fourth. (A sus always suspends to a 4th by default)
         //       The value would be one of the tertian degrees 7,9,11 or 13, although
         //       11 is a bit redundant since it is exactly the same as a sus9.
-        //       e.g. Csus9 => C9sus => C9sus4.
+        //       e.g. Csus9 = C9sus = C9sus4 => C dom-9 sus-4
         //
         //    c. Otherwise, treat it as a standard add-alt, and default the sus
         //       to a sus4
         //
         //    d. If there isn't any numerical value, i.e. just 'sus', and the
         //       quasi-extension rule applies, the default extension is "9".
-        //       Csus+ => Csus9aug => C dominant-9 sus-4 alt-#5 => C F G# Bb D
+        //       Csus+ = Csus9aug => C dominant-9 sus-4 alt-#5 => C F G# Bb D
         //
         //    e. If there isn't any value and the quasi-extension rule doesn't apply,
         //       it defaults to a sus4.

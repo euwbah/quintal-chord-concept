@@ -326,11 +326,10 @@ class Chord {
 
     // Assign Extension
 
-    // Fixing RegExp ambiguity of lydian tertian extension parsing
     // #11 and #15 should only be extensions if the quality was
     // explicitly denoted as major, and treated as add-alts otherwise,
     // but the RegExp will parse any #11 or #15 numerals after
-    // the quality as extensions no matter what...
+    // the quality as extensions, so this should fix it.
 
     if (this.quality !== Qualities.MAJOR) {
       if (['#11', '#15'].includes(extension)) {
@@ -599,6 +598,41 @@ class Chord {
     }
   }
 
+  // (3, Qualities.MINOR) -> Degree('b3')
+  // (11, Qualities.MAJOR) -> Degree('#11')
+  // etc...
+  // Note that only the tertiary extension series are accepted for
+  // the degree parameter
+  static applyGenderToExtension(degree, quality) {
+    let d = Number.parseInt(degree);
+
+    // Root colours are gender-neutral
+    if ([1,5,9,13].includes(d)) {
+      return new Degree(d.toString());
+    }
+
+    if (d === 3 && [Qualities.DOMINANT, Qualities.MAJOR].includes(quality)) {
+      return new Degree('3');
+    }
+
+    if (quality === Qualities.MAJOR) {
+      if (d === 7)
+        return new Degree('7');
+      else
+        return new Degree('#' + d); // #11, #15
+    } else {
+      if ([3, 7].includes(d))
+        return new Degree('b' + d); // b3, b7
+      else
+        return new Degree('11'); // There shouldn't be a 15!
+    }
+  }
+
+  // See the static version of this method
+  applyGenderToExtension(degree) {
+    return Chord.applyGenderToExtension(degree, this.quality);
+  }
+
   // Returns degrees with DegreeSource whomstdve purposes
   get degrees() {
     if (this.__degrees)
@@ -607,6 +641,13 @@ class Chord {
     let degrees = [];     // [Degree]
 
     for (let extension = 1; extension <= this.extension; extension += 2) {
+      if (this.removedNotes.filter(x => x.degree === extension).length !== 0) {
+        // FIXME: Naive implementation
+        // Accidental part of a removed note's degree is ignored, still
+        // unsure whether this will bring up any problems later on
+
+
+      }
       if (this.alterations[extension]) {
         // if an alteration exists for this extension, add altered
         // degree(s) as alterations

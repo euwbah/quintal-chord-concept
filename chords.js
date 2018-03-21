@@ -160,14 +160,19 @@ const SusMode = Object.freeze({
   FOUR: 4
 });
 
-// Used inside Degree object to denote where did the degree come from
+// Used inside Degree object to denote where did the
+// precence or absence of the degree come from
 const DegreeSource = Object.freeze({
-  UNSPECIFIED: 0, // For behind-the-scenes usage, the rest are for display purposes
-  QUALITY: 1,     // Unaltered chord tone
-  NO: 2,          // Removed chord tone
-  ALTERATION: 3,  // Altered chord tone
-  ADDITION: 4,    // Added degree (regardless of chord tone)
-  SUSPENSION: 5   // Represents either the 2nd or 4th degree - the suspended 3rd
+  UNSPECIFIED: 0,     // For behind-the-scenes usage, the rest are for display purposes
+  QUALITY: 1,         // Unaltered chord tone
+  NO: 2,              // Removed chord tone
+  ALTERATION: 3,      // Altered chord tone from explicit add-alt
+  ALT_DIM: 4,         // Pure-alt from diminished quasi-quality
+  ALT_HDIM: 5,        // Pure-alt from half-dim quasi-quality
+  ALT_AUG: 6,         // Pure-alt from augmented quasi-quality
+  ADDITION: 7,        // Added degree (regardless of chord tone)
+  SUSPENSION: 8,      // Represents either the 2nd or 4th degree - the suspended 3rd
+  SUSPENDED_THIRD: 9  // Represents the 3rd degree that has been suspended
 });
 
 // For both internal transient usage and display purposes
@@ -374,20 +379,28 @@ class Chord {
     let handleAddAlt = (str) => {
       let degree = new Degree(str);
 
-      debug('handling add-alt ' + str);
-
       // if degree numeral is part of the tertian series as denoted by the
       // chord's extension...
       if (degree.degree <= this.extension && degree.degree % 2 === 1 &&
 
         // ... and an alteration of this degree already doesn't exist,..
-          !this.alterations[degree.degree]) {
+          !this.alterations[degree.degree] &&
+        // ... and the chord tone wasn't already explicitly removed,
+        //     (can't alter a chord tone that doesn't exist...)
+          this.removedNotes.filter(x => x.degree === degree.degree).length === 0 &&
+        // ... and if the add-alt doesn't conflict with a suspended third...
+          !(this.suspension !== SusMode.NONE && degree.degree === 3)) {
 
-        // then treat it as an alteration
+        debug('Handled add-alt as alt: ' + str);
+        // ...then treat it as an alteration
         this.alterations[degree.degree] = [degree];
 
       } else {
+        debug('Handled add-alt as add: ' + str);
         // otherwise, treat it as an addition
+        // note that in `Cno3b3` and `Cmaj7sus3`
+        // the add-alt `3` will be considered an addition,
+        // redundancy / logical conflicts won't be regarded as errors
         this.addedNotes.push(degree);
       }
     }
@@ -403,13 +416,14 @@ class Chord {
     // is encapsulated within the tertian series of the extension.
     let handleAlt = (...alts) => {
       for (let alt in alts) {
-        debug('Handling alt: ' + alt);
         let degree = new Degree(alt);
 
         if (!this.alterations[degree.degree]) {
+          debug('Handled pure-alt: ' + alt);
           // No conflicting alterations - create the alteration
           this.alterations[degree.degree] = [degree];
         } else {
+          debug('Handled multi-alt: ' + alt);
           // Alteration with same degree already exists - add more alterations
           this.alterations[degree.degree].push(degree);
         }
@@ -573,5 +587,30 @@ class Chord {
 
       first = false;
     }
+  }
+
+  // Returns degrees with DegreeSource whomstdve purposes
+  get degrees() {
+    if (this.__degrees)
+      return this.__degrees;
+
+    let degrees = [];     // [Degree]
+
+    for (let extension = 1; extension <= this.extension; extension += 2) {
+      if (this.alterations[extension]) {
+        // if an alteration exists for this extension, add altered
+        // degree(s) as alterations
+        for (let d in this.alterations[extension]) {
+          let altDeg = new Degree(d.toString());
+          altDeg.source = DegreeSource.ALTERATION;
+          degrees.add(altDeg);
+        }
+      }
+    }
+
+
+
+    this.__degrees = degrees;
+    return this.__degrees;
   }
 }

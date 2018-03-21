@@ -326,13 +326,13 @@ class Chord {
 
     // Assign Extension
 
-    // #11 and #15 should only be extensions if the quality was
+    // #11, 15, and #15 should only be extensions if the quality was
     // explicitly denoted as major, and treated as add-alts otherwise,
-    // but the RegExp will parse any #11 or #15 numerals after
+    // but the RegExp will parse #11/15/#15 numerals after
     // the quality as extensions, so this should fix it.
 
     if (this.quality !== Qualities.MAJOR) {
-      if (['#11', '#15'].includes(extension)) {
+      if (['#11', '15', '#15'].includes(extension)) {
         // prepend alterations with the impostor extensions
         alterations = extension + alterations;
         // revert extension to nothing

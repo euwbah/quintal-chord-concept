@@ -188,7 +188,11 @@ const DegreeSource = Object.freeze({
 // For both internal transient usage and display purposes
 // Degree source need not be specified for internal usage.
 class Degree {
-  constructor(str) {
+  // str: the numeral degree
+  // degreeSource?: how is the degree derived (when constructing the chord)
+  // included?: Represents whether this degree is a note that belongs in the chord,
+  //            or if it is implicitly or explicitly excluded from the chord
+  constructor(str, degreeSource=DegreeSource.UNSPECIFIED, included=null) {
     this.__strValue = str;
     let match = str.match(/(bb|b|#|x|)(\d+)/);
     if (match === null)
@@ -199,7 +203,13 @@ class Degree {
     this.accidental = accidentalStr;
     this.degree = Number.parseInt(degreeStr);
     this.optional = false;
-    this.source = DegreeSource.UNSPECIFIED;
+    // Note that setting the .source property will also
+    // automatically set the .included property
+    this.source = degreeSource;
+    // But the included parameter, if specified, will override that
+    // inducted by .source
+    if (included !== null)
+      this.included = included;
   }
 
   get accidental() {
@@ -216,6 +226,26 @@ class Degree {
   set accidentalClass(value) {
     this.__accidentalClass = value;
     this.__accidental = toAccidental(value);
+  }
+
+  get source() {
+    return this.__source;
+  }
+  set source(value) {
+    this.__source = value;
+
+    // set the chord inclusion status based on the source
+    // explicitly denoting NO or SUSPENDED_THIRD on the degree
+    // is also the act of explicitly denoting the lack of that
+    // degree in a chord.
+
+    // However, implicit exclusion will require manual assignment
+    // to the this.included field, e.g. when a `bb7` exists
+    // from a full dim alteration, but the chord extension is only
+    // specified as a 'dim' (effectively 'dom5dim') not a 'dim7',
+    // although the bb7 alteration exists, it is not being utilised
+    // because the 7th is not in the chord tone.
+    this.included = ![DegreeSource.NO, DegreeSource.SUSPENDED_THIRD].includes(value);
   }
 
   toString() {
@@ -424,7 +454,8 @@ class Chord {
     // will simultaneously sound if and only if the degree of the alteration
     // is encapsulated within the tertian series of the extension.
     let handleAlt = (...alts) => {
-      for (let alt in alts) {
+      debug('handle pure-alts: ' + alts);
+      for (let alt of alts) {
         let degree = new Degree(alt);
 
         if (!this.alterations[degree.degree]) {
@@ -457,7 +488,9 @@ class Chord {
       if (match === null)
         throw 'Internal error! Alteration error fell through quality parsing check :(';
 
-      let [full, quasiQuality, addDegree, noDegree, susMatch, susDegree] = match.map(x => x.toLowerCase());
+      let [full, quasiQuality, addDegree, noDegree, susMatch, susDegree] =
+        match.map(x =>
+          x !== undefined ? x.toLowerCase() : undefined);
 
       // pop out matched chars from the remaining string
       remaining = remaining.substring(full.length);
@@ -640,28 +673,118 @@ class Chord {
 
     let degrees = [];     // [Degree]
 
+    // Go through all the chord tones
     for (let extension = 1; extension <= this.extension; extension += 2) {
+
+      // XXX: Note that using if..else if may be an issue because
+      // it is only assumed that alterations and removals might not
+      // be of the same degree simultaneously
       if (this.removedNotes.filter(x => x.degree === extension).length !== 0) {
-        // FIXME: Naive implementation
+        // XXX: Naive implementation
         // Accidental part of a removed note's degree is ignored, still
         // unsure whether this will bring up any problems later on
 
+        let noDeg = this.applyGenderToExtension(extension);
+        noDeg.source = DegreeSource.NO;
+        degrees.push(noDeg);
+      } else if (extension === 3 && this.suspension !== SusMode.NONE) {
+        // If the degree is the supended third, exclude the third by marking the
+        // 3rd degree as SUSPENDED_THIRD, and replace the third with either
+        // the 4th or 2nd depending on the specified suspension degree
+        // denoted by the SUSPESION degree source.
+        let susDeg = new Degree(
+          this.suspension === SusMode.FOUR ? '4' : '2',
+          DegreeSource.SUSPENSION);
 
-      }
-      if (this.alterations[extension]) {
-        // if an alteration exists for this extension, add altered
-        // degree(s) as alterations
-        for (let d in this.alterations[extension]) {
-          let altDeg = new Degree(d.toString());
-          altDeg.source = DegreeSource.ALTERATION;
-          degrees.add(altDeg);
-        }
+        degrees.push(susDeg);
+        degrees.push(new Degree('3', DegreeSource.SUSPENDED_THIRD));
+      } else if (!this.alterations[extension]) {
+        // Otherwise, if not altered, note is a normal chord tone
+        // All the alterations will be added later, as some alterations
+        // may not necessarily be included in the tertian stack
+        // (e.g. the bb7 in a dom-5 dim chord)
+
+        let normalDeg = this.applyGenderToExtension(extension);
+        normalDeg.source = DegreeSource.QUALITY;
+        degrees.push(normalDeg);
       }
     }
 
+    // Add all the alterations
 
+    for (let alterations of this.alterations) {
+      if (!alterations || alterations.length === 0)
+        continue;
+
+      for (let d of alterations) {
+
+        let source = DegreeSource.UNSPECIFIED;
+        // Not all alterations may necessarily be included in the tertian stack
+        // (The quasi-quality alterations may have excluded degrees)
+        let included = d.degree <= this.extension;
+
+        if (this.dimMode === DimMode.FULL && ['b3','b5','bb7'].includes(d.toString())) {
+          source = DegreeSource.ALT_DIM;
+        } else if (this.dimMode === DimMode.HALF && ['b3','b5'].includes(d.toString())) {
+          source = DegreeSource.ALT_HDIM;
+        } else if (this.aug && d.toString() === '#5') {
+          source = DegreeSource.ALT_AUG;
+        } else {
+          source = DegreeSource.ALTERATION;
+        }
+
+        degrees.push(new Degree(d.toString(), source, included));
+      }
+    }
+
+    // Add all the added notes... very simple
+
+    for (let addDeg of this.addedNotes) {
+      degrees.push(new Degree(addDeg.toString(), DegreeSource.ADDITION));
+    }
+
+    // done!
 
     this.__degrees = degrees;
     return this.__degrees;
+  }
+
+  // Represents the degrees and sources in string form
+  degreesToString() {
+    let str = '';
+    let degrees = this.degrees;
+
+    degrees.sort((a, b) => a.degree - b.degree + (a.accidentalClass - b.accidentalClass) * 0.1);
+
+    for (let d in degrees.filter(x => x.included)) {
+      switch(d.source) {
+        case DegreeSource.QUALITY:
+          str += d + ' ';
+          break;
+        case DegreeSource.ALTERATION:
+          str += `alt-${d} `;
+          break;
+        case DegreeSource.ALT_AUG:
+          str += `aug-${d} `;
+          break;
+        case DegreeSource.ALT_DIM:
+          str += `dim-${d} `;
+          break;
+        case DegreeSource.ALT_HDIM:
+          str += `hdim-${d} `;
+          break;
+        case DegreeSource.SUSPENSION:
+          str += `sus-${d} `;
+          break;
+      }
+    }
+
+    str += '\n';
+    for (let d in degrees.filter(x => !x.included)) {
+      switch(d.source) {
+        case DegreeSource.NO:
+          str += `no-${d}`;
+      }
+    }
   }
 }

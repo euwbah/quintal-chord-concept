@@ -756,7 +756,7 @@ class Chord {
 
     degrees.sort((a, b) => a.degree - b.degree + (a.accidentalClass - b.accidentalClass) * 0.1);
 
-    for (let d in degrees.filter(x => x.included)) {
+    for (let d of degrees.filter(x => x.included)) {
       switch(d.source) {
         case DegreeSource.QUALITY:
           str += d + ' ';
@@ -780,11 +780,20 @@ class Chord {
     }
 
     str += '\n';
-    for (let d in degrees.filter(x => !x.included)) {
+    for (let d of degrees.filter(x => !x.included)) {
       switch(d.source) {
         case DegreeSource.NO:
-          str += `no-${d}`;
+          str += `no-${d} `;
+          break;
+        case DegreeSource.SUSPENDED_THIRD:
+          str += `no-${d}(sus) `;
+          break;
+        default:
+          str += `excl-alt-${d} `;
+          break;
       }
     }
+
+    return str;
   }
 }

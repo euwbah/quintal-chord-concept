@@ -279,6 +279,7 @@ class Chord {
     // Remove all unnecessary/unwanted characters & whitespaces except parenthesis
     // the parens are useful for identifying C#11 from C(#11)
     let chordStr = str.replace(CHORD_UNWANTED_CHARS, '');
+    
     let [,root, rootAccidental, quality, extension, alterations] = chordStr.match(CHORD_PARSER);
 
     // Remove parens once alterations has been (more) accurately seperated from
@@ -779,7 +780,7 @@ class Chord {
       }
     }
 
-    str += '\n';
+    str += '\n excl: ';
     for (let d of degrees.filter(x => !x.included)) {
       switch(d.source) {
         case DegreeSource.NO:
@@ -793,6 +794,51 @@ class Chord {
           break;
       }
     }
+
+    return str;
+  }
+
+  toString() {
+    let str = this.root.toString() + ' ';
+
+    switch(this.quality) {
+      case Qualities.MAJOR:
+        str += 'maj';
+        break;
+      case Qualities.MINOR:
+        str += 'min';
+        break;
+      case Qualities.DOMINANT:
+        str += 'dom';
+        break;
+    }
+
+    str += `-${this.extension}`;
+
+    for (let d of this.degrees.filter(x => x.source === DegreeSource.NO))
+      str += ` no-${d.toString()}`;
+
+    if (this.dimMode === DimMode.FULL) {
+      str += ' dim';
+    } else if (this.dimMode === DimMode.HALF) {
+      str += ' hdim';
+    }
+
+    if (this.aug) {
+      str += ' aug';
+    }
+
+    if (this.suspension === SusMode.FOUR) {
+      str += ' sus4';
+    } else if (this.suspension === SusMode.TWO) {
+      str += ' sus2';
+    }
+
+    for (let d of this.degrees.filter(x => x.source === DegreeSource.ALTERATION))
+      str += ' ' + d;
+
+    for (let d of this.degrees.filter(x => x.source === DegreeSource.ADDITION))
+      str += ` add-${d.toString()}`;
 
     return str;
   }

@@ -279,7 +279,10 @@ class Chord {
     // Remove all unnecessary/unwanted characters & whitespaces except parenthesis
     // the parens are useful for identifying C#11 from C(#11)
     let chordStr = str.replace(CHORD_UNWANTED_CHARS, '');
-    
+    let __maybeChord = chordStr.match(CHORD_PARSER);
+    if (__maybeChord === null)
+      throw `${str} is not a chord`;
+
     let [,root, rootAccidental, quality, extension, alterations] = chordStr.match(CHORD_PARSER);
 
     // Remove parens once alterations has been (more) accurately seperated from

@@ -67,9 +67,9 @@ const HALF_DIM_CHARS = ['0', '\u{00D8}', '\u{00F8}', '\u{2205}', '\u{2300}', '\u
 // already specified (e.g. major, minor, suspended),
 // the numbers can be treated as additions/alterations instead of extensions.
 //
-// Test this here: https://regex101.com/r/IxcDTk/12
+// Test this here: https://regex101.com/r/IxcDTk/13
 const CHORD_PARSER =
-  /^([A-Ga-g])(b|#|)(.*?)(2|3|4|5|7|9|11|#11|13|15|#15)?((?:(?:(?:bb|b|#|x)?(?:10|1?[1-9]))|[Dd][Ii][Mm]|o|O|\u{1D698}|\u{25CB}|\u{1D3C}|\u{25E6}|\u{00B0}|[Hh][Dd][Ii][Mm]|0|\u{00D8}|\u{00F8}|\u{2205}|\u{2300}|\u{1D1A9}|[Ss][Uu][Ss]|[Aa][Uu][Gg]|\+|[Aa][Dd][Dd][b#]*1*[0-9]|[Nn][Oo][b#]*1*[0-9]|[Aa][Ll][Tt]|[()])*)$/u;
+  /^([A-Ga-g])(bb|b|#|x|)(.*?)(2|3|4|5|7|9|11|#11|13|15|#15)?((?:(?:(?:bb|b|#|x)?(?:10|1?[1-9]))|[Dd][Ii][Mm]|o|O|\u{1D698}|\u{25CB}|\u{1D3C}|\u{25E6}|\u{00B0}|[Hh][Dd][Ii][Mm]|0|\u{00D8}|\u{00F8}|\u{2205}|\u{2300}|\u{1D1A9}|[Ss][Uu][Ss]|[Aa][Uu][Gg]|\+|[Aa][Dd][Dd][b#]*1*[0-9]|[Nn][Oo][b#]*1*[0-9]|[Aa][Ll][Tt]|[()])*)$/u;
 
 // Same as ALTERATION_UNWANTED_CHARS except brackets are kept for parsing
 // brackets are used to identify C#11 [C# dom-11] from C(#11) [C add-#11]

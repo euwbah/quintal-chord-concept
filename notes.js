@@ -2,6 +2,19 @@
 
 // Script order: 2
 
+const AccidentalMode = Object.freeze({
+  // No Fb/E#B#/Cb
+  BASIC: 0,
+  // Has Fb/E#/B#/Cb
+  ALLOW_ENHARMONICS: 1,
+  // Has double accidentals if necessary
+  ALLOW_DOUBLE_ACCIDENTALS: 2
+});
+
+// User-configurable settings
+let DEFAULT_CIRCLE_ACCIDENTAL_MODE = AccidentalMode.ALLOW_ENHARMONICS;
+let DEFAULT_CHORD_ACCIDENTAL_MODE = AccidentalMode.ALLOW_DOUBLE_ACCIDENTALS;
+
 // Mapping white key tonal centers to major scale accidentals
 //
 // Only the white keys are needed, because any accidentals on the
@@ -52,15 +65,6 @@ const DEGREE_PITCHNAME_MAP = Object.freeze({
   5: 'G',
   6: 'A',
   7: 'B'
-});
-
-const AccidentalMode = Object.freeze({
-  // No Fb/E#B#/Cb
-  BASIC: 0,
-  // Has Fb/E#/B#/Cb
-  ALLOW_ENHARMONICS: 1,
-  // Has double accidentals if necessary
-  ALLOW_DOUBLE_ACCIDENTALS: 2
 });
 
 class Note {
@@ -120,7 +124,7 @@ class Note {
   //
   // Note that once the accidentals exceed the constraints defined by the
   // accidental mode, the new accidental will default to AccidentalMode.BASIC
-  getInterval(interval, accidentalMode=AccidentalMode.ALLOW_ENHARMONICS) {
+  getInterval(interval, accidentalMode=DEFAULT_CHORD_ACCIDENTAL_MODE) {
     // Step 0: parse interval string
     let [ , iAccidental, iDegree] = interval.match(/(\D*)(\d+)/);
     iDegree = Number.parseInt(iDegree);

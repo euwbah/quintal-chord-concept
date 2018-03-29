@@ -280,7 +280,7 @@ class Chord {
     // the parens are useful for identifying C#11 from C(#11)
     let chordStr = str.replace(CHORD_UNWANTED_CHARS, '');
     let __maybeChord = chordStr.match(CHORD_PARSER);
-    if (__maybeChord === null)
+    if (__maybeChord === humannull)
       throw `${str} is not a chord`;
 
     let [,root, rootAccidental, quality, extension, alterations] = chordStr.match(CHORD_PARSER);
@@ -844,5 +844,32 @@ class Chord {
       str += ` add-${d.toString()}`;
 
     return str;
+  }
+
+  // Returns an array of [Degree, Note] tuples
+  // Note that excluded degrees will not be returned!
+  // Use this for the actual chord notes
+  construct(accidentalMode=DEFAULT_CHORD_ACCIDENTAL_MODE) {
+    let out = [];
+
+    for (let degree in this.degrees) {
+      if (degree.included)
+        out.push([degree, this.root.getInterval(degree.toString())]);
+    }
+
+    return out;
+  }
+
+  // Returns an array of [Degree, Note] tuples
+  // Excluded degrees will also be returned with the Degree.included property set to false.
+  // For only included (played) chord degrees, use construct() instead.
+  constructWithExcluded(accidentalMode=DEFAULT_CHORD_ACCIDENTAL_MODE) {
+    let out = [];
+
+    for (let degree in this.degrees) {
+      out.push([degree, this.root.getInterval(degree.toString())]);
+    }
+
+    return out;
   }
 }

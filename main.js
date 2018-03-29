@@ -107,7 +107,7 @@ function positionCircleNotes(note) {
 // Creates the circle of fifths by going 6 fifths above the root and 5 fifths below.
 // Returns a 1-based index array in the order of the circle of fifths.
 // e.g. for C initial note: 1 => C, 2 => G, etc...
-function createCircleOfFifths(initialNote, accidentalMode=AccidentalMode.ALLOW_ENHARMONICS) {
+function createCircleOfFifths(initialNote, accidentalMode=DEFAULT_CIRCLE_ACCIDENTAL_MODE) {
   let circleOfFifths = [];
   let n = initialNote.toConventionalSpelling();
   // root + 6 fifths
